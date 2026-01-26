@@ -1,0 +1,66 @@
+@page "/login"
+@inject NavigationManager Navigation
+@inject MindNestApp.Services.SQLiteService Db
+@inject AuthStateService Auth
+
+<h1>Login</h1>
+
+<input placeholder="Email"
+       @bind="email" />
+<br /><br />
+
+<input type="password"
+       placeholder="Password"
+       @bind="password" />
+<br /><br />
+
+<button @onclick="Login">Login</button>
+
+<p style="color:red">@message</p>
+
+<p>
+    Don’t have an account?
+    <a @onclick="GoToSignup" style="cursor:pointer;color:blue">
+        Sign up
+    </a>
+</p>
+
+@code {
+    string email = "";
+    string password = "";
+    string message = "";
+
+    async Task Login()
+    {
+        message = "";
+
+        if (string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password))
+        {
+            message = "Email and password are required.";
+            return;
+        }
+
+        var user = await Db.GetUserByEmailAsync(email);
+
+        if (user == null)
+        {
+            message = "User does not exist.";
+            return;
+        }
+
+        if (user.Password != password)
+        {
+            message = "Incorrect password.";
+            return;
+        }
+
+        Auth.Login(user);
+        Navigation.NavigateTo("/dashboard", true);
+    }
+
+    void GoToSignup()
+    {
+        Navigation.NavigateTo("/signup");
+    }
+}

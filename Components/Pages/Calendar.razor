@@ -1,0 +1,172 @@
+@page "/calendar"
+@inject SQLiteService Db
+@inject AuthStateService Auth
+@inject NavigationManager Navigation
+
+<h3>Journal Calendar</h3>
+
+@if (loading)
+{
+    <p>Loading...</p>
+}
+else if (currentUser == null)
+{
+    <p>Redirecting to login...</p>
+}
+else
+{
+    <div style="margin-bottom:10px;">
+        <button @onclick="PrevMonth">◀</button>
+        <strong style="margin:0 15px">@currentMonth.ToString("MMMM yyyy")</strong>
+        <button @onclick="NextMonth">▶</button>
+    </div>
+
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr>
+                @foreach (var day in dayNames)
+                {
+                    <th style="border:1px solid #ccc; padding:5px">@day</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var week in calendarWeeks)
+            {
+                <tr>
+                    @foreach (var day in week)
+                    {
+                        if (day is null)
+                        {
+                            <td style="border:1px solid #eee"></td>
+                        }
+                        else
+                        {
+                            var date = day.Value.Date;
+                            var hasEntry = journalDates.Contains(date);
+
+                            <td style="border:1px solid #ccc; padding:10px; text-align:center; cursor:pointer; position:relative;"
+                                @onclick="() => ShowJournal(date)">
+                                @date.Day
+                                @if (hasEntry)
+                                {
+                                    <span style="position:absolute; top:4px; right:4px; color:green;">●</span>
+                                }
+                            </td>
+                        }
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (selectedJournalContent != null)
+    {
+        <div style="margin-top:15px; padding:10px; border:1px solid #aaa;">
+            <strong>@selectedJournalDate?.ToString("dd MMM yyyy")</strong>
+            <p>@selectedJournalContent</p>
+            <button @onclick="CloseJournal">Close</button>
+        </div>
+    }
+}
+
+@code {
+    private User? currentUser;
+    private bool loading = true;
+
+    private readonly List<string> dayNames = new() { "Sun","Mon","Tue","Wed","Thu","Fri","Sat" };
+    private readonly HashSet<DateTime> journalDates = new();
+    private readonly Dictionary<DateTime, string> journalPreviews = new();
+
+    private List<List<DateTime?>> calendarWeeks = new();
+    private DateTime currentMonth = DateTime.Today;
+
+    private DateTime? selectedJournalDate;
+    private string? selectedJournalContent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = Auth.CurrentUser;
+
+        if (currentUser == null)
+        {
+            Navigation.NavigateTo("/login", true);
+            return;
+        }
+
+        // ✅ Async load
+        await LoadJournalDatesAsync();
+        BuildCalendar(currentMonth.Year, currentMonth.Month);
+
+        loading = false;
+    }
+
+    private async Task LoadJournalDatesAsync()
+    {
+        journalDates.Clear();
+        journalPreviews.Clear();
+
+        var entries = await Db.GetEntriesAsync(currentUser!.Email);
+
+        foreach (var e in entries)
+        {
+            var date = new DateTime(e.DateTicks).Date;
+            journalDates.Add(date);
+            journalPreviews[date] =
+                e.Content.Length > 40 ? e.Content[..40] + "…" : e.Content;
+        }
+    }
+
+    private void BuildCalendar(int year, int month)
+    {
+        calendarWeeks.Clear();
+        var firstDay = new DateTime(year, month, 1);
+        var daysInMonth = DateTime.DaysInMonth(year, month);
+
+        var week = new List<DateTime?>();
+        for (int i = 0; i < (int)firstDay.DayOfWeek; i++)
+            week.Add(null);
+
+        for (int d = 1; d <= daysInMonth; d++)
+        {
+            week.Add(new DateTime(year, month, d));
+            if (week.Count == 7)
+            {
+                calendarWeeks.Add(week);
+                week = new();
+            }
+        }
+
+        if (week.Count > 0)
+        {
+            while (week.Count < 7) week.Add(null);
+            calendarWeeks.Add(week);
+        }
+    }
+
+    private void PrevMonth()
+    {
+        currentMonth = currentMonth.AddMonths(-1);
+        BuildCalendar(currentMonth.Year, currentMonth.Month);
+    }
+
+    private void NextMonth()
+    {
+        currentMonth = currentMonth.AddMonths(1);
+        BuildCalendar(currentMonth.Year, currentMonth.Month);
+    }
+
+    private void ShowJournal(DateTime date)
+    {
+        selectedJournalDate = date;
+        selectedJournalContent = journalPreviews.TryGetValue(date, out var text)
+            ? text
+            : "No journal for this day.";
+    }
+
+    private void CloseJournal()
+    {
+        selectedJournalDate = null;
+        selectedJournalContent = null;
+    }
+}

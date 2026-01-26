@@ -1,0 +1,22 @@
+﻿@inject NavigationManager Navigation
+
+@inherits LayoutComponentBase
+
+@{
+    var hideNav = Navigation.Uri.Contains("/login") || Navigation.Uri.Contains("/signup");
+}
+
+<div class="page">
+    @if (!hideNav)
+    {
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+    }
+
+    <main>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>

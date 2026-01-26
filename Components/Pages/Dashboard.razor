@@ -1,0 +1,44 @@
+@page "/dashboard"
+@inject NavigationManager Navigation
+@inject AuthStateService Auth
+
+<h1>Dashboard</h1>
+
+@if (Auth.CurrentUser == null)
+{
+    Navigation.NavigateTo("/login", true);
+}
+else
+{
+    <p>Welcome, <b>@Auth.CurrentUser.FullName</b></p>
+
+    <button @onclick="GoToWriteJournal">
+        Write Today’s Journal
+    </button>
+
+    <br /><br />
+
+    <button @onclick="GoToHistory">
+        View Journal History
+    </button>
+}
+
+<button style="margin-top:20px" @onclick="Logout">Logout</button>
+
+@code {
+    private void GoToWriteJournal()
+    {
+        Navigation.NavigateTo("/write-journal");
+    }
+
+    private void GoToHistory()
+    {
+        Navigation.NavigateTo("/journal-history");
+    }
+
+    private void Logout()
+    {
+        Auth.Logout();
+        Navigation.NavigateTo("/login", true);
+    }
+}

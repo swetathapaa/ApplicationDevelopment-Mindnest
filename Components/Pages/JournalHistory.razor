@@ -1,0 +1,56 @@
+@page "/journal-history"
+
+@inject SQLiteService Db
+@inject NavigationManager Navigation
+@inject AuthStateService Auth
+
+<h1>Journal History</h1>
+
+@if (Auth.CurrentUser == null)
+{
+    Navigation.NavigateTo("/login", true);
+    return;
+}
+
+@if (entries.Count == 0)
+{
+    <p>No journal entries yet.</p>
+}
+else
+{
+    <ul>
+        @foreach (var entry in entries)
+        {
+            <li>
+                <b>@(new DateTime(entry.DateTicks).ToString("yyyy-MM-dd HH:mm"))</b>
+                <p>@entry.Content</p>
+
+                <button @onclick="() => DeleteEntry(entry)">Delete</button>
+            </li>
+            <hr />
+        }
+    </ul>
+}
+
+<button @onclick="GoBack">Back</button>
+
+
+@code {
+    private List<JournalEntry> entries = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        entries = await Db.GetEntriesAsync(Auth.CurrentUser!.Email);
+        entries = entries.OrderByDescending(e => e.DateTicks).ToList();
+    }
+
+    private async Task DeleteEntry(JournalEntry entry)
+    {
+        await Db.DeleteEntryAsync(entry);
+        entries.Remove(entry);
+    }
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/dashboard");
+    }
+}
