@@ -1,154 +1,176 @@
 @page "/journal-history"
-
-@inject SQLiteService Db
+@inject MindNestApp.Services.SQLiteService Db
+@inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
 @inject AuthStateService Auth
 
-<h1>Journal History</h1>
+<PageTitle>Journal History</PageTitle>
 
-@if (Auth.CurrentUser == null)
-{
-    Navigation.NavigateTo("/login", true);
-    return;
-}
+<div class="journal-page" style="padding:15px; max-width:800px; margin:auto;">
 
-<input type="text"
-       placeholder="Search journal entries..."
-       @bind="searchQuery"
-       style="width:100%; margin-bottom:10px;" />
-
-@if (filteredEntries.Count == 0)
-{
-    <p>No journal entries found.</p>
-}
-else
-{
-    <ul style="list-style:none; padding:0;">
-        @foreach (var entry in pagedEntries)
-        {
-            <li style="border:1px solid #ddd; padding:12px; margin-bottom:12px; border-radius:6px;">
-                
-                <b>@(new DateTime(entry.CreatedAtTicks).ToString("dddd, dd MMM yyyy • HH:mm"))</b>
-
-                <p style="margin-top:8px;">@entry.Content</p>
-
-                @* Mood display *@
-                @if (!string.IsNullOrWhiteSpace(entry.PrimaryMood))
-                {
-                    <p>
-                        <b>Mood:</b> @entry.PrimaryMood
-                        @if (!string.IsNullOrWhiteSpace(entry.SecondaryMoods))
-                        {
-                            var secs = entry.SecondaryMoods.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                            foreach (var sec in secs)
-                            {
-                                <span>, @sec</span>
-                            }
-                        }
-                        <span> (@entry.MoodCategory)</span>
-                    </p>
-                }
-
-                @* Category *@
-                @if (!string.IsNullOrWhiteSpace(entry.Category))
-                {
-                    <p><b>Category:</b> @entry.Category</p>
-                }
-
-                @* Tags display *@
-                @if (!string.IsNullOrWhiteSpace(entry.Tags))
-                {
-                    <p><b>Tags:</b> @entry.Tags</p>
-                }
-
-                <button @onclick="() => DeleteEntry(entry)"
-                        style="margin-top:8px;">
-                    Delete
-                </button>
-            </li>
-        }
-    </ul>
-
-    <div style="margin-top:10px;">
-        <button @onclick="PreviousPage" disabled="@(_currentPage == 1)">Previous</button>
-        <span style="margin:0 10px;">Page @_currentPage</span>
-        <button @onclick="NextPage" disabled="@(_currentPage >= totalPages)">Next</button>
+    <!-- Header -->
+    <div class="journal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h1 style="margin:0;">Journal History</h1>
+        <div class="header-buttons" style="display:flex; gap:10px;">
+            <button style="padding:6px 12px; border:none; border-radius:5px; background:#5B9A8B; color:white; font-weight:bold; cursor:pointer;"
+                    @onclick="NewEntry">New Entry</button>
+            <button style="padding:6px 12px; border:none; border-radius:5px; background:#E6C79F; color:white; font-weight:bold; cursor:pointer;"
+                    @onclick="ExportPdf">Export PDF</button>
+        </div>
     </div>
-}
 
-<br />
-<button @onclick="GoBack">Back to Dashboard</button>
+    <div class="timeline-subtitle" style="margin-bottom:15px;"><em>Your personal timeline</em></div>
+
+    <!-- Search & Filter -->
+    <div class="search-filter-bar" style="display:flex; gap:10px; margin-bottom:15px;">
+        <input type="text" placeholder="Search journals..." class="search-input" 
+               style="flex:1; padding:5px;" @bind="SearchText" @bind:event="oninput" />
+
+        <select class="filter-select" @bind="SelectedFilter" style="padding:5px;">
+            <option value="">All Categories</option>
+            @foreach (var cat in categories ?? new List<string>())
+            {
+                <option value="@cat">@cat</option>
+            }
+        </select>
+    </div>
+
+    <!-- Journal Cards -->
+    <div class="journal-cards">
+        @if (filteredEntries != null && filteredEntries.Any())
+        {
+            @foreach (var entry in filteredEntries)
+            {
+                <div class="journal-card" style="border:1px solid #ccc; border-radius:8px; padding:10px; margin-bottom:12px; background:#fefcf8;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:bold; font-size:1em;">@(!string.IsNullOrEmpty(entry.Category) ? entry.Category : "Untitled")</span>
+                        <span style="font-size:0.8em; color:#555;">@((entry.Content?.Split(' ', StringSplitOptions.RemoveEmptyEntries)?.Length ?? 0) + " words")</span>
+                    </div>
+
+                    <div style="color:#888; font-size:0.85em; margin-top:2px;">
+                        @entry.CreatedAt.ToString("dddd, dd MMMM yyyy") 
+                        @if (entry.UpdatedAt > entry.CreatedAt)
+                        {
+                            <span style="font-size:0.75em;"> (Updated)</span>
+                        }
+                    </div>
+
+                    <div style="margin-top:5px; font-size:0.95em;">
+                        @(!string.IsNullOrEmpty(entry.Content) && entry.Content.Length > 200
+                            ? entry.Content.Substring(0, 200) + "..."
+                            : entry.Content ?? "")
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(entry.Tags))
+                    {
+                        <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;">
+                            @foreach (var tag in entry.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                var trimmed = tag.Trim();
+                                if (!string.IsNullOrEmpty(trimmed))
+                                {
+                                    <span style="display:inline-block; background:#E6C79C; padding:2px 6px; border-radius:4px; font-size:0.8em;">
+                                        #@trimmed
+                                    </span>
+                                }
+                            }
+                        </div>
+                    }
+
+                    <div style="margin-top:8px;">
+                        <button style="min-width:70px; padding:6px 12px; font-weight:bold; border-radius:5px; border:none; background:#5B9A8B; color:white; margin-right:6px; cursor:pointer;"
+                                @onclick="() => EditEntry(entry)">Update</button>
+                        <button style="min-width:70px; padding:6px 12px; font-weight:bold; border-radius:5px; border:none; background:#E56B6F; color:white; cursor:pointer;"
+                                @onclick="() => DeleteEntry(entry)">Delete</button>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p>No journals found.</p>
+        }
+    </div>
+</div>
 
 @code {
     private List<JournalEntry> allEntries = new();
     private List<JournalEntry> filteredEntries = new();
-    private List<JournalEntry> pagedEntries = new();
+    private List<string> categories = new();
 
-    private string searchQuery = string.Empty;
+    private string searchText = "";
+    private string selectedFilter = "";
 
-    private int _currentPage = 1;
-    private const int PageSize = 5;
-    private int totalPages => (int)Math.Ceiling(filteredEntries.Count / (double)PageSize);
+    private string SearchText
+    {
+        get => searchText;
+        set { searchText = value; ApplyFilter(); }
+    }
+
+    private string SelectedFilter
+    {
+        get => selectedFilter;
+        set { selectedFilter = value; ApplyFilter(); }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        allEntries = await Db.GetEntriesAsync(Auth.CurrentUser!.Email);
-        allEntries = allEntries.OrderByDescending(e => e.CreatedAtTicks).ToList(); // updated
+        if (Auth.CurrentUser == null)
+        {
+            Navigation.NavigateTo("/login", true);
+            return;
+        }
+
+        var currentUserEmail = Auth.CurrentUser.Email;
+        allEntries = await Db.GetEntriesAsync(currentUserEmail);
+
+        categories = allEntries
+            .Select(e => e.Category)
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Distinct()
+            .ToList();
 
         ApplyFilter();
     }
 
     private void ApplyFilter()
     {
-        filteredEntries = allEntries
-            .Where(e => string.IsNullOrWhiteSpace(searchQuery) ||
-                        e.Content.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        _currentPage = 1;
-        ApplyPagination();
+        filteredEntries = allEntries?
+            .Where(e =>
+                (string.IsNullOrEmpty(searchText) || (e.Content?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+                (string.IsNullOrEmpty(selectedFilter) || e.Category == selectedFilter))
+            .ToList() ?? new List<JournalEntry>();
     }
 
-    private void ApplyPagination()
-    {
-        pagedEntries = filteredEntries
-            .Skip((_currentPage - 1) * PageSize)
-            .Take(PageSize)
-            .ToList();
-    }
+    private void NewEntry() => Navigation.NavigateTo("/write-journal");
+    private void EditEntry(JournalEntry entry) => Navigation.NavigateTo($"/write-journal?editId={entry.Id}");
 
-    private void NextPage()
+    private async void ExportPdf()
     {
-        if (_currentPage < totalPages)
+        if (filteredEntries == null || !filteredEntries.Any())
         {
-            _currentPage++;
-            ApplyPagination();
+            await JSRuntime.InvokeVoidAsync("alert", "No journals to export!");
+            return;
         }
-    }
 
-    private void PreviousPage()
-    {
-        if (_currentPage > 1)
-        {
-            _currentPage--;
-            ApplyPagination();
-        }
+        var pdfService = new PdfExportService();
+        var path = pdfService.ExportJournalsToPdf(Auth.CurrentUser.Email, filteredEntries);
+        await JSRuntime.InvokeVoidAsync("alert", $"Exported to: {path}");
     }
 
     private async Task DeleteEntry(JournalEntry entry)
     {
-        await Db.DeleteEntryAsync(entry);
-        allEntries.Remove(entry);
-        ApplyFilter();
-    }
+        if (entry == null) return;
 
-    private void GoBack()
-    {
-        Navigation.NavigateTo("/dashboard");
-    }
-
-    protected override void OnParametersSet()
-    {
-        ApplyFilter();
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Delete journal '{entry.Category ?? "Untitled"}'?");
+        if (confirmed)
+        {
+            var deleted = await Db.DeleteEntryAsync(entry);
+            if (deleted > 0)
+            {
+                allEntries.Remove(entry);
+                ApplyFilter();
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@
 using MindNestApp.Services;
 using System.IO;
 using Microsoft.Maui.Storage;
+// MauiProgram.cs
 
 namespace MindNestApp;
 
@@ -34,6 +35,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<PdfExportService>();
         //theme 
         builder.Services.AddSingleton<ThemeService>();
+        
+
+
 
 
 #if DEBUG

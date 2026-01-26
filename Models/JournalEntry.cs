@@ -9,21 +9,22 @@ namespace MindNestApp.Models
         public int Id { get; set; }
 
         public string UserEmail { get; set; } = string.Empty;
-
-        // Content in Markdown/rich-text
         public string Content { get; set; } = string.Empty;
 
-        // Timestamps
+        // Store ticks directly
         public long CreatedAtTicks { get; set; }
         public long UpdatedAtTicks { get; set; }
 
+        public DateTime CreatedAt => CreatedAtTicks > 0 ? new DateTime(CreatedAtTicks, DateTimeKind.Utc) : DateTime.MinValue;
+        public DateTime UpdatedAt => UpdatedAtTicks > 0 ? new DateTime(UpdatedAtTicks, DateTimeKind.Utc) : DateTime.MinValue;
+
         // Moods
         public string PrimaryMood { get; set; } = string.Empty;
-        public string SecondaryMoods { get; set; } = string.Empty; // comma-separated max 2
-        public string MoodCategory { get; set; } = string.Empty; // Positive, Neutral, Negative
+        public string SecondaryMoods { get; set; } = string.Empty;
+        public string MoodCategory { get; set; } = string.Empty;
 
         // Category & Tags
         public string Category { get; set; } = string.Empty;
-        public string Tags { get; set; } = string.Empty; // comma-separated or custom tags
+        public string Tags { get; set; } = string.Empty;
     }
 }

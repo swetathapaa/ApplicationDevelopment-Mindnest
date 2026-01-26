@@ -96,6 +96,27 @@ namespace MindNestApp.Services
         {
             return _db.UpdateAsync(user);
         }
+        public Task<List<UserCustomTag>> GetUserCustomTagsAsync(string userEmail)
+        {
+            return _db.Table<UserCustomTag>()
+                .Where(t => t.UserEmail == userEmail)
+                .ToListAsync();
+        }
+
+        public Task<int> AddUserCustomTagAsync(string userEmail, string tag)
+        {
+            return _db.InsertAsync(new UserCustomTag
+            {
+                UserEmail = userEmail,
+                Tag = tag
+            });
+        }
+
+        public Task<int> DeleteUserCustomTagAsync(UserCustomTag tag)
+        {
+            return _db.DeleteAsync(tag);
+        }
+
 
     }
     

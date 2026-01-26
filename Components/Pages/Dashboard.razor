@@ -1,44 +1,214 @@
 @page "/dashboard"
+@inject SQLiteService Db
 @inject NavigationManager Navigation
 @inject AuthStateService Auth
 
-<h1>Dashboard</h1>
+<PageTitle>Dashboard</PageTitle>
 
 @if (Auth.CurrentUser == null)
 {
     Navigation.NavigateTo("/login", true);
+    return;
 }
-else
-{
-    <p>Welcome, <b>@Auth.CurrentUser.FullName</b></p>
-
-    <button @onclick="GoToWriteJournal">
-        Write Today’s Journal
-    </button>
-
-    <br /><br />
-
-    <button @onclick="GoToHistory">
-        View Journal History
-    </button>
-}
-
-<button style="margin-top:20px" @onclick="Logout">Logout</button>
 
 @code {
-    private void GoToWriteJournal()
+    private string userEmail = "";
+    private string userName = "";
+    private DateTime today = DateTime.Today;
+
+    private int currentStreak = 0;
+    private JournalEntry? todaysEntry;
+    private List<JournalEntry> recentEntries = new();
+
+    protected override async Task OnInitializedAsync()
     {
-        Navigation.NavigateTo("/write-journal");
+        userEmail = Auth.CurrentUser.Email;
+        userName = Auth.CurrentUser.FullName ?? "User";
+
+        // Load all entries for user
+        var allEntries = await Db.GetEntriesAsync(userEmail);
+        allEntries = allEntries.OrderByDescending(e => e.CreatedAtTicks).ToList();
+
+        // Today’s entry
+        todaysEntry = allEntries.FirstOrDefault(e => e.CreatedAt.Date == today);
+
+        // Recent 3 entries
+        recentEntries = allEntries.Take(3).ToList();
+
+        // Calculate streak
+        currentStreak = CalculateStreak(allEntries);
     }
 
-    private void GoToHistory()
+    private int CalculateStreak(List<JournalEntry> entries)
     {
-        Navigation.NavigateTo("/journal-history");
+        int streak = 0;
+        DateTime day = today;
+        var datesSet = entries.Select(e => e.CreatedAt.Date).ToHashSet();
+
+        while (datesSet.Contains(day))
+        {
+            streak++;
+            day = day.AddDays(-1);
+        }
+        return streak;
     }
 
-    private void Logout()
-    {
-        Auth.Logout();
-        Navigation.NavigateTo("/login", true);
-    }
+    // Navigation helpers
+    private void GoToWriteJournal() => Navigation.NavigateTo("/write-journal");
+    private void GoToCalendar() => Navigation.NavigateTo("/calendar");
+    private void GoToAnalytics() => Navigation.NavigateTo("/analytics");
 }
+<div class="dashboard-container">
+
+    <!-- Greeting + Date -->
+    <div class="greeting">
+        <h2>Good morning, @userName!</h2>
+        <p>Today is @today.ToString("dddd, MMMM dd, yyyy")</p>
+        <h4>How are you feeling today?</h4>
+    </div>
+
+    <!-- Top Cards: Streak, Today's Mood, etc. -->
+    <div class="top-cards">
+        <div class="card">
+            <h3>Current Streak</h3>
+            <p>@currentStreak day(s)</p>
+        </div>
+        <div class="card">
+            <h3>Today's Mood</h3>
+            <p>@(todaysEntry != null && !string.IsNullOrWhiteSpace(todaysEntry.PrimaryMood) ? todaysEntry.PrimaryMood : "No entry today")</p>
+        </div>
+        <div class="card">
+            <h3>Recent Entries</h3>
+            <p>@recentEntries.Count entry(s)</p>
+        </div>
+    </div>
+
+    <!-- Main Action Area: Write Journal, Calendar, Analytics -->
+    <div class="main-actions">
+        <div class="write-entry-card" @onclick="GoToWriteJournal">
+            <h3>Start Writing</h3>
+            <p>Capture your thoughts and feelings today</p>
+        </div>
+
+        <div class="side-cards">
+            <div class="card" @onclick="GoToCalendar">
+                <h3>Calendar</h3>
+            </div>
+            <div class="card" @onclick="GoToAnalytics">
+                <h3>Analytics</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Entries Cards -->
+    <div class="recent-entries">
+        <h3>Recent Entries</h3>
+        @if (recentEntries.Any())
+        {
+            @foreach (var entry in recentEntries)
+            {
+                <div class="entry-card">
+                    <div class="entry-header">
+                        <b>@(!string.IsNullOrEmpty(entry.Category) ? entry.Category : "Untitled")</b>
+                        <span class="word-count">@((entry.Content?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length) ?? 0) words</span>
+                    </div>
+                    <div class="entry-date">@entry.CreatedAt.ToString("dddd, MMMM dd, yyyy")</div>
+                    <div class="entry-content">
+                        @(!string.IsNullOrEmpty(entry.Content) && entry.Content.Length > 200
+                            ? entry.Content.Substring(0, 200) + "..."
+                            : entry.Content ?? "")
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(entry.Tags))
+                    {
+                        <div class="entry-tags">
+                            @foreach (var tag in entry.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <span class="tag">@tag.Trim()</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <p>No recent entries.</p>
+        }
+    </div>
+</div>
+
+<style>
+.dashboard-container {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    font-family: 'Open Sans', sans-serif;
+}
+
+.greeting h2 { margin: 0; font-size: 24px; }
+.greeting p { margin: 0; color: #555; }
+.greeting h4 { margin-top: 5px; color: #333; }
+
+.top-cards {
+    display: flex;
+    gap: 15px;
+}
+.top-cards .card {
+    flex: 1;
+    padding: 15px;
+    background-color: #f8f6f3;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.main-actions {
+    display: flex;
+    gap: 15px;
+}
+.write-entry-card {
+    flex: 2;
+    padding: 20px;
+    background-color: #5B9A8B;
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+}
+.side-cards {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.side-cards .card {
+    flex: 1;
+    padding: 15px;
+    background-color: #E6C79C;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.recent-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.entry-card {
+    padding: 15px;
+    background-color: #FEFCF8;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.entry-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+}
+.word-count { font-size: 12px; color: #777; }
+.entry-date { font-size: 12px; color: #555; margin-bottom: 5px; }
+.entry-content { margin-bottom: 5px; }
+.entry-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.entry-tags .tag { background-color: #E6C79C; padding: 3px 8px; border-radius: 5px; font-size: 12px; cursor: default; }
+</style>

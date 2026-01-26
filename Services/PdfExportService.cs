@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using QuestPDF.Fluent;
-using QuestPDF.Infrastructure;
-using MindNestApp.Models;
 using Microsoft.Maui.Storage;
+using MindNestApp.Models;
 
 namespace MindNestApp.Services
 {
@@ -12,74 +10,56 @@ namespace MindNestApp.Services
     {
         public string ExportJournalsToPdf(string userEmail, List<JournalEntry> entries)
         {
-            // REQUIRED: set license ONCE before using QuestPDF
-            QuestPDF.Settings.License = LicenseType.Community;
+#if MACCATALYST
+            return ExportAsTextFallback(userEmail, entries);
+#else
+            return ExportAsPdf(userEmail, entries);
+#endif
+        }
 
+#if MACCATALYST
+        private string ExportAsTextFallback(string userEmail, List<JournalEntry> entries)
+        {
             var filePath = Path.Combine(
                 FileSystem.AppDataDirectory,
-                $"MindNest_Journal_{DateTime.Now:yyyyMMdd_HHmmss}.pdf"
+                $"MindNest_Journal_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
             );
 
-            Document.Create(container =>
+            using var writer = new StreamWriter(filePath);
+
+            writer.WriteLine("MindNest – Journal Export");
+            writer.WriteLine($"User: {userEmail}");
+            writer.WriteLine($"Generated on: {DateTime.Now}");
+            writer.WriteLine(new string('-', 50));
+
+            foreach (var entry in entries)
             {
-                container.Page(page =>
-                {
-                    page.Margin(40);
+                writer.WriteLine($"Date: {new DateTime(entry.CreatedAtTicks):yyyy-MM-dd HH:mm}");
+                writer.WriteLine($"Category: {entry.Category}");
+                writer.WriteLine($"Mood: {entry.PrimaryMood}");
 
-                    page.Content().Column(column =>
-                    {
-                        column.Spacing(10);
+                if (!string.IsNullOrWhiteSpace(entry.Tags))
+                    writer.WriteLine($"Tags: {entry.Tags}");
 
-                        // Title
-                        column.Item().Text("MindNest – Journal Export")
-                            .FontSize(20)
-                            .Bold();
-
-                        // User info
-                        column.Item().Text($"User: {userEmail}");
-                        column.Item().Text($"Generated on: {DateTime.Now:yyyy-MM-dd HH:mm}");
-
-                        column.Item().LineHorizontal(1);
-
-                        // Entries
-                        foreach (var entry in entries)
-                        {
-                            // Use new CreatedAtTicks
-                            var createdAt = new DateTime(entry.CreatedAtTicks);
-
-                            column.Item().Text(createdAt.ToString("yyyy-MM-dd HH:mm"))
-                                .Bold();
-
-                            // Mood info
-                            if (!string.IsNullOrWhiteSpace(entry.PrimaryMood))
-                            {
-                                string secondaryText = "";
-                                if (!string.IsNullOrWhiteSpace(entry.SecondaryMoods))
-                                {
-                                    var secs = entry.SecondaryMoods.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                                    secondaryText = " | Secondary: " + string.Join(", ", secs);
-                                }
-
-                                column.Item().Text($"Mood: {entry.PrimaryMood}{secondaryText} ({entry.MoodCategory})");
-                            }
-
-                            // Category & tags
-                            if (!string.IsNullOrWhiteSpace(entry.Category))
-                                column.Item().Text($"Category: {entry.Category}");
-
-                            if (!string.IsNullOrWhiteSpace(entry.Tags))
-                                column.Item().Text($"Tags: {entry.Tags}");
-
-                            // Content
-                            column.Item().Text(entry.Content);
-
-                            column.Item().PaddingBottom(10);
-                        }
-                    });
-                });
-            }).GeneratePdf(filePath);
+                writer.WriteLine();
+                writer.WriteLine(entry.Content);
+                writer.WriteLine(new string('-', 50));
+            }
 
             return filePath;
         }
+#endif
+
+#if !MACCATALYST
+        private string ExportAsPdf(string userEmail, List<JournalEntry> entries)
+        {
+            // You can re-enable QuestPDF here later
+            // (for Windows builds only)
+
+            throw new NotImplementedException(
+                "PDF export is disabled on this platform."
+            );
+        }
+#endif
     }
 }

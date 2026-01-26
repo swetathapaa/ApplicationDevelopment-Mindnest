@@ -1,172 +1,154 @@
 @page "/calendar"
 @inject SQLiteService Db
-@inject AuthStateService Auth
 @inject NavigationManager Navigation
+@inject AuthStateService Auth
 
-<h3>Journal Calendar</h3>
+<PageTitle>Journal Calendar</PageTitle>
 
-@if (loading)
+@if (Auth.CurrentUser == null)
 {
-    <p>Loading...</p>
+    Navigation.NavigateTo("/login", true);
+    return;
 }
-else if (currentUser == null)
-{
-    <p>Redirecting to login...</p>
-}
-else
-{
-    <div style="margin-bottom:10px;">
-        <button @onclick="PrevMonth">◀</button>
-        <strong style="margin:0 15px">@currentMonth.ToString("MMMM yyyy")</strong>
-        <button @onclick="NextMonth">▶</button>
+
+<div class="calendar-page">
+
+    <!-- LEFT : CALENDAR -->
+    <div class="calendar-left">
+        <h2>@CurrentMonth.ToString("MMMM yyyy")</h2>
+
+        <div class="calendar-grid">
+            @foreach (var dayName in DayNames)
+            {
+                <div class="day-header">@dayName</div>
+            }
+
+            @foreach (var cell in CalendarCells)
+            {
+                if (cell == null)
+                {
+                    <div class="day-cell empty"></div>
+                }
+                else
+                {
+                    var date = cell.Value;
+                    var hasEntry = EntryMap.ContainsKey(date.Date);
+                    var isPastMissed = date.Date < Today && !hasEntry;
+                    var isToday = date.Date == Today;
+
+                    <div class="day-cell
+                        @(hasEntry ? "has-entry" : "")
+                        @(isPastMissed ? "missed" : "")
+                        @(isToday ? "today" : "")"
+                         @onclick="() => OnDateClick(date)"
+                         title="@GetPreview(date)">
+
+                        <span class="day-number">@date.Day</span>
+
+                        @if (hasEntry)
+                        {
+                            <span class="dot"></span>
+                        }
+                    </div>
+                }
+            }
+        </div>
     </div>
 
-    <table style="width:100%; border-collapse:collapse;">
-        <thead>
-            <tr>
-                @foreach (var day in dayNames)
-                {
-                    <th style="border:1px solid #ccc; padding:5px">@day</th>
-                }
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var week in calendarWeeks)
-            {
-                <tr>
-                    @foreach (var day in week)
-                    {
-                        if (day is null)
-                        {
-                            <td style="border:1px solid #eee"></td>
-                        }
-                        else
-                        {
-                            var date = day.Value.Date;
-                            var hasEntry = journalDates.Contains(date);
+    <!-- RIGHT : LEGEND + STATS -->
+    <div class="calendar-right">
 
-                            <td style="border:1px solid #ccc; padding:10px; text-align:center; cursor:pointer; position:relative;"
-                                @onclick="() => ShowJournal(date)">
-                                @date.Day
-                                @if (hasEntry)
-                                {
-                                    <span style="position:absolute; top:4px; right:4px; color:green;">●</span>
-                                }
-                            </td>
-                        }
-                    }
-                </tr>
-            }
-        </tbody>
-    </table>
+        <h3>Legend</h3>
+        <div class="legend-item"><span class="legend green"></span> Journal written</div>
+        <div class="legend-item"><span class="legend red"></span> Missed day</div>
+        <div class="legend-item"><span class="legend today"></span> Today</div>
+        <div class="legend-item"><span class="legend future"></span> Future day</div>
 
-    @if (selectedJournalContent != null)
-    {
-        <div style="margin-top:15px; padding:10px; border:1px solid #aaa;">
-            <strong>@selectedJournalDate?.ToString("dd MMM yyyy")</strong>
-            <p>@selectedJournalContent</p>
-            <button @onclick="CloseJournal">Close</button>
+        <hr />
+
+        <h3>This Month</h3>
+        <p><b>Total days:</b> @TotalDays</p>
+        <p><b>Entries written:</b> @WrittenDays</p>
+        <p><b>Missed days:</b> @MissedDays</p>
+        <p><b>Completion:</b> @CompletionRate%</p>
+
+        <hr />
+
+        <div class="tip-box">
+            <b>Tip</b>
+            <p>
+                • Hover on a date to preview the journal<br />
+                • Click a date to view or edit the full entry
+            </p>
         </div>
-    }
-}
+    </div>
+</div>
 
 @code {
-    private User? currentUser;
-    private bool loading = true;
+    DateTime Today = DateTime.Today;
+    DateTime CurrentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
 
-    private readonly List<string> dayNames = new() { "Sun","Mon","Tue","Wed","Thu","Fri","Sat" };
-    private readonly HashSet<DateTime> journalDates = new();
-    private readonly Dictionary<DateTime, string> journalPreviews = new();
+    List<string> DayNames = new() { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    List<DateTime?> CalendarCells = new();
 
-    private List<List<DateTime?>> calendarWeeks = new();
-    private DateTime currentMonth = DateTime.Today;
+    Dictionary<DateTime, JournalEntry> EntryMap = new();
 
-    private DateTime? selectedJournalDate;
-    private string? selectedJournalContent;
+    int TotalDays;
+    int WrittenDays;
+    int MissedDays;
+    int CompletionRate;
 
     protected override async Task OnInitializedAsync()
     {
-        currentUser = Auth.CurrentUser;
+        var entries = await Db.GetEntriesAsync(Auth.CurrentUser!.Email);
 
-        if (currentUser == null)
-        {
-            Navigation.NavigateTo("/login", true);
-            return;
-        }
+        EntryMap = entries
+            .GroupBy(e => e.CreatedAt.Date)
+            .ToDictionary(g => g.Key, g => g.First());
 
-        // ✅ Async load
-        await LoadJournalDatesAsync();
-        BuildCalendar(currentMonth.Year, currentMonth.Month);
-
-        loading = false;
+        BuildCalendar();
+        CalculateStats();
     }
 
-    private async Task LoadJournalDatesAsync()
+    void BuildCalendar()
     {
-        journalDates.Clear();
-        journalPreviews.Clear();
+        CalendarCells.Clear();
 
-        var entries = await Db.GetEntriesAsync(currentUser!.Email);
+        var firstDay = CurrentMonth;
+        int startOffset = (int)firstDay.DayOfWeek;
+        int daysInMonth = DateTime.DaysInMonth(CurrentMonth.Year, CurrentMonth.Month);
 
-        foreach (var e in entries)
-        {
-            var date = new DateTime(e.CreatedAtTicks).Date;
-            journalDates.Add(date);
-            journalPreviews[date] =
-                e.Content.Length > 40 ? e.Content[..40] + "…" : e.Content;
-        }
+        for (int i = 0; i < startOffset; i++)
+            CalendarCells.Add(null);
+
+        for (int day = 1; day <= daysInMonth; day++)
+            CalendarCells.Add(new DateTime(CurrentMonth.Year, CurrentMonth.Month, day));
     }
 
-    private void BuildCalendar(int year, int month)
+    void CalculateStats()
     {
-        calendarWeeks.Clear();
-        var firstDay = new DateTime(year, month, 1);
-        var daysInMonth = DateTime.DaysInMonth(year, month);
+        TotalDays = DateTime.DaysInMonth(CurrentMonth.Year, CurrentMonth.Month);
 
-        var week = new List<DateTime?>();
-        for (int i = 0; i < (int)firstDay.DayOfWeek; i++)
-            week.Add(null);
+        WrittenDays = EntryMap.Keys.Count(d => d.Month == CurrentMonth.Month);
+        MissedDays = Enumerable.Range(1, Today.Day - 1)
+            .Count(d => !EntryMap.ContainsKey(new DateTime(CurrentMonth.Year, CurrentMonth.Month, d)));
 
-        for (int d = 1; d <= daysInMonth; d++)
-        {
-            week.Add(new DateTime(year, month, d));
-            if (week.Count == 7)
-            {
-                calendarWeeks.Add(week);
-                week = new();
-            }
-        }
-
-        if (week.Count > 0)
-        {
-            while (week.Count < 7) week.Add(null);
-            calendarWeeks.Add(week);
-        }
+        CompletionRate = (int)((double)WrittenDays / Math.Max(1, Today.Day - 1) * 100);
     }
 
-    private void PrevMonth()
+    void OnDateClick(DateTime date)
     {
-        currentMonth = currentMonth.AddMonths(-1);
-        BuildCalendar(currentMonth.Year, currentMonth.Month);
+        if (EntryMap.ContainsKey(date.Date))
+            Navigation.NavigateTo($"/write-journal?editId={EntryMap[date.Date].Id}");
+        else
+            Navigation.NavigateTo("/write-journal");
     }
 
-    private void NextMonth()
+    string GetPreview(DateTime date)
     {
-        currentMonth = currentMonth.AddMonths(1);
-        BuildCalendar(currentMonth.Year, currentMonth.Month);
-    }
+        if (!EntryMap.ContainsKey(date.Date)) return "No journal";
 
-    private void ShowJournal(DateTime date)
-    {
-        selectedJournalDate = date;
-        selectedJournalContent = journalPreviews.TryGetValue(date, out var text)
-            ? text
-            : "No journal for this day.";
-    }
-
-    private void CloseJournal()
-    {
-        selectedJournalDate = null;
-        selectedJournalContent = null;
+        var text = EntryMap[date.Date].Content;
+        return text.Length > 80 ? text.Substring(0, 80) + "..." : text;
     }
 }
