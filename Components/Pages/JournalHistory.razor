@@ -12,45 +12,143 @@
     return;
 }
 
-@if (entries.Count == 0)
+<input type="text"
+       placeholder="Search journal entries..."
+       @bind="searchQuery"
+       style="width:100%; margin-bottom:10px;" />
+
+@if (filteredEntries.Count == 0)
 {
-    <p>No journal entries yet.</p>
+    <p>No journal entries found.</p>
 }
 else
 {
-    <ul>
-        @foreach (var entry in entries)
+    <ul style="list-style:none; padding:0;">
+        @foreach (var entry in pagedEntries)
         {
-            <li>
-                <b>@(new DateTime(entry.DateTicks).ToString("yyyy-MM-dd HH:mm"))</b>
-                <p>@entry.Content</p>
+            <li style="border:1px solid #ddd; padding:12px; margin-bottom:12px; border-radius:6px;">
+                
+                <b>@(new DateTime(entry.CreatedAtTicks).ToString("dddd, dd MMM yyyy • HH:mm"))</b>
 
-                <button @onclick="() => DeleteEntry(entry)">Delete</button>
+                <p style="margin-top:8px;">@entry.Content</p>
+
+                @* Mood display *@
+                @if (!string.IsNullOrWhiteSpace(entry.PrimaryMood))
+                {
+                    <p>
+                        <b>Mood:</b> @entry.PrimaryMood
+                        @if (!string.IsNullOrWhiteSpace(entry.SecondaryMoods))
+                        {
+                            var secs = entry.SecondaryMoods.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var sec in secs)
+                            {
+                                <span>, @sec</span>
+                            }
+                        }
+                        <span> (@entry.MoodCategory)</span>
+                    </p>
+                }
+
+                @* Category *@
+                @if (!string.IsNullOrWhiteSpace(entry.Category))
+                {
+                    <p><b>Category:</b> @entry.Category</p>
+                }
+
+                @* Tags display *@
+                @if (!string.IsNullOrWhiteSpace(entry.Tags))
+                {
+                    <p><b>Tags:</b> @entry.Tags</p>
+                }
+
+                <button @onclick="() => DeleteEntry(entry)"
+                        style="margin-top:8px;">
+                    Delete
+                </button>
             </li>
-            <hr />
         }
     </ul>
+
+    <div style="margin-top:10px;">
+        <button @onclick="PreviousPage" disabled="@(_currentPage == 1)">Previous</button>
+        <span style="margin:0 10px;">Page @_currentPage</span>
+        <button @onclick="NextPage" disabled="@(_currentPage >= totalPages)">Next</button>
+    </div>
 }
 
-<button @onclick="GoBack">Back</button>
-
+<br />
+<button @onclick="GoBack">Back to Dashboard</button>
 
 @code {
-    private List<JournalEntry> entries = new();
+    private List<JournalEntry> allEntries = new();
+    private List<JournalEntry> filteredEntries = new();
+    private List<JournalEntry> pagedEntries = new();
+
+    private string searchQuery = string.Empty;
+
+    private int _currentPage = 1;
+    private const int PageSize = 5;
+    private int totalPages => (int)Math.Ceiling(filteredEntries.Count / (double)PageSize);
 
     protected override async Task OnInitializedAsync()
     {
-        entries = await Db.GetEntriesAsync(Auth.CurrentUser!.Email);
-        entries = entries.OrderByDescending(e => e.DateTicks).ToList();
+        allEntries = await Db.GetEntriesAsync(Auth.CurrentUser!.Email);
+        allEntries = allEntries.OrderByDescending(e => e.CreatedAtTicks).ToList(); // updated
+
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        filteredEntries = allEntries
+            .Where(e => string.IsNullOrWhiteSpace(searchQuery) ||
+                        e.Content.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        _currentPage = 1;
+        ApplyPagination();
+    }
+
+    private void ApplyPagination()
+    {
+        pagedEntries = filteredEntries
+            .Skip((_currentPage - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+    }
+
+    private void NextPage()
+    {
+        if (_currentPage < totalPages)
+        {
+            _currentPage++;
+            ApplyPagination();
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+            ApplyPagination();
+        }
     }
 
     private async Task DeleteEntry(JournalEntry entry)
     {
         await Db.DeleteEntryAsync(entry);
-        entries.Remove(entry);
+        allEntries.Remove(entry);
+        ApplyFilter();
     }
+
     private void GoBack()
     {
         Navigation.NavigateTo("/dashboard");
+    }
+
+    protected override void OnParametersSet()
+    {
+        ApplyFilter();
     }
 }

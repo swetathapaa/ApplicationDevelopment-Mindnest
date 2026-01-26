@@ -1,0 +1,278 @@
+@page "/settings"
+@inject AuthStateService Auth
+@inject NavigationManager Navigation
+@inject SQLiteService Db
+@inject ThemeService ThemeService
+
+<h2>Settings</h2>
+
+@if (Auth.CurrentUser == null)
+{
+    Navigation.NavigateTo("/login", true);
+    return;
+}
+
+<div class="settings-container" style="background-color:@ThemeService.BackgroundColor; color:@ThemeService.TextColor">
+
+    @if (!string.IsNullOrEmpty(alertMessage))
+    {
+        <div class="alert @(alertSuccess ? "alert-success" : "alert-danger")">
+            @alertMessage
+        </div>
+    }
+
+    <!-- Personal Info -->
+    <div class="section">
+        <h3>Personal Details</h3>
+
+        <label>Name:</label>
+        <input type="text" @bind="userName" />
+
+        <label>Email:</label>
+        <input type="email" @bind="userEmail" disabled />
+
+        <label>Phone:</label>
+        <input type="text" @bind="userPhone" />
+
+        <label>Date of Birth:</label>
+        <input type="date" @bind="userDOB" />
+
+        <label>Gender:</label>
+        <select @bind="userGender">
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+        </select>
+
+        <button class="save-btn" @onclick="UpdatePersonalDetails">Save Details</button>
+    </div>
+
+    <!-- Change Password -->
+    <div class="section">
+        <h3>Change Password</h3>
+
+        <label>Current Password:</label>
+        <input type="password" @bind="currentPassword" />
+
+        <label>New Password:</label>
+        <input type="password" @bind="newPassword" />
+
+        <label>Confirm New Password:</label>
+        <input type="password" @bind="confirmPassword" />
+
+        <button class="save-btn" @onclick="ChangePassword">Change Password</button>
+    </div>
+
+    <!-- Theme Toggle -->
+    <div class="section">
+        <h3>Theme</h3>
+        <button class="theme-btn" @onclick="ToggleTheme">
+            Switch to @(isDarkMode ? "Light" : "Dark") Theme
+        </button>
+    </div>
+</div>
+
+<style>
+    .settings-container {
+        padding: 20px;
+        border-radius: 12px;
+        max-width: 600px;
+        margin: auto;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: background-color 0.3s, color 0.3s;
+    }
+
+    .section {
+        margin-bottom: 25px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: bold;
+    }
+
+    input, select {
+        width: 100%;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #c5996e;
+        margin-bottom: 12px;
+        color: inherit;
+        background-color: inherit;
+    }
+
+    select {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+
+    .save-btn, .theme-btn {
+        background-color: #c5996e;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: opacity 0.2s;
+    }
+
+    .save-btn:hover, .theme-btn:hover {
+        opacity: 0.85;
+    }
+
+    .alert {
+        padding: 10px 15px;
+        margin-bottom: 15px;
+        border-radius: 6px;
+        font-weight: bold;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .settings-container {
+            margin: 10px;
+            padding: 15px;
+        }
+
+        .save-btn, .theme-btn {
+            width: 100%;
+            padding: 12px;
+        }
+    }
+</style>
+
+@code {
+    private string userName = "";
+    private string userEmail = "";
+    private string userPhone = "";
+    private DateTime? userDOB;
+    private string userGender = "";
+    private string currentPassword = "";
+    private string newPassword = "";
+    private string confirmPassword = "";
+    private bool isDarkMode = false;
+
+    private string alertMessage = "";
+    private bool alertSuccess = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUser == null) return;
+
+        userName = Auth.CurrentUser.FullName;
+        userEmail = Auth.CurrentUser.Email;
+        userPhone = Auth.CurrentUser.PhoneNumber;
+        userDOB = Auth.CurrentUser.DateOfBirth;
+        userGender = Auth.CurrentUser.Gender;
+        isDarkMode = Auth.CurrentUser.IsDarkMode;
+
+        // Apply theme immediately
+        ThemeService.SetTheme(isDarkMode);
+    }
+
+    private async Task UpdatePersonalDetails()
+    {
+        try
+        {
+            Auth.CurrentUser.FullName = userName;
+            Auth.CurrentUser.PhoneNumber = userPhone;
+            Auth.CurrentUser.DateOfBirth = userDOB ?? DateTime.Today;
+
+            Auth.CurrentUser.Gender = userGender;
+
+            await Db.UpdateUserAsync(Auth.CurrentUser);
+
+            ShowAlert("Personal details updated successfully!", true);
+        }
+        catch
+        {
+            ShowAlert("Failed to update personal details.", false);
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        if (string.IsNullOrWhiteSpace(currentPassword) ||
+            string.IsNullOrWhiteSpace(newPassword) ||
+            string.IsNullOrWhiteSpace(confirmPassword))
+        {
+            ShowAlert("Please fill in all password fields.", false);
+            return;
+        }
+
+        if (currentPassword != Auth.CurrentUser.Password)
+        {
+            ShowAlert("Current password is incorrect.", false);
+            return;
+        }
+
+        if (newPassword != confirmPassword)
+        {
+            ShowAlert("New passwords do not match.", false);
+            return;
+        }
+
+        if (!IsStrongPassword(newPassword))
+        {
+            ShowAlert("Password must be at least 8 chars, include uppercase, lowercase, number, and special character.", false);
+            return;
+        }
+
+        Auth.CurrentUser.Password = newPassword;
+        await Db.UpdateUserAsync(Auth.CurrentUser);
+
+        ShowAlert("Password changed successfully!", true);
+
+        // Clear password fields
+        currentPassword = newPassword = confirmPassword = "";
+    }
+
+    private void ToggleTheme()
+    {
+        isDarkMode = !isDarkMode;
+        Auth.CurrentUser.IsDarkMode = isDarkMode;
+        Db.UpdateUserAsync(Auth.CurrentUser); // optional await
+
+        ThemeService.SetTheme(isDarkMode);
+        ShowAlert($"Theme switched to {(isDarkMode ? "Dark" : "Light")} mode.", true);
+    }
+
+    private void ShowAlert(string message, bool success)
+    {
+        alertMessage = message;
+        alertSuccess = success;
+
+        StateHasChanged();
+
+        Task.Delay(3000).ContinueWith(_ =>
+        {
+            alertMessage = "";
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private bool IsStrongPassword(string password)
+    {
+        if (password.Length < 8) return false;
+        if (!password.Any(char.IsUpper)) return false;
+        if (!password.Any(char.IsLower)) return false;
+        if (!password.Any(char.IsDigit)) return false;
+        if (!password.Any(ch => !char.IsLetterOrDigit(ch))) return false;
+
+        return true;
+    }
+}

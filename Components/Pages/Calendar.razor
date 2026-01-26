@@ -110,7 +110,7 @@ else
 
         foreach (var e in entries)
         {
-            var date = new DateTime(e.DateTicks).Date;
+            var date = new DateTime(e.CreatedAtTicks).Date;
             journalDates.Add(date);
             journalPreviews[date] =
                 e.Content.Length > 40 ? e.Content[..40] + "…" : e.Content;

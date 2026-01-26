@@ -27,11 +27,13 @@ public static class MauiProgram
             return new SQLiteService(dbPath);
         });
 
-        //Auth Services
+        // Auth Services
         builder.Services.AddSingleton<AuthStateService>();
-        //pdf service
-        builder.Services.AddSingleton<PdfExportService>();
 
+        // PDF Service
+        builder.Services.AddSingleton<PdfExportService>();
+        //theme 
+        builder.Services.AddSingleton<ThemeService>();
 
 
 #if DEBUG

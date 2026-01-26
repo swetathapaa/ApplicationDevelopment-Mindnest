@@ -1,17 +1,17 @@
-﻿@inject NavigationManager Navigation
-
-@inherits LayoutComponentBase
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject ThemeService ThemeService
 
 @{
-    var hideNav = Navigation.Uri.Contains("/login") || Navigation.Uri.Contains("/signup");
+bool hideNav = Navigation.Uri.Contains("/login") || Navigation.Uri.Contains("/signup");
 }
 
-<div class="page">
+<div class="page" style="background-color:@ThemeService.BackgroundColor; color:@ThemeService.TextColor; min-height:100vh; transition: background-color 0.3s, color 0.3s;">
     @if (!hideNav)
     {
-        <div class="sidebar">
-            <NavMenu />
-        </div>
+    <div class="sidebar">
+        <NavMenu />
+    </div>
     }
 
     <main>
@@ -20,3 +20,40 @@
         </article>
     </main>
 </div>
+
+<style>
+    .page {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 220px;
+    }
+
+    main {
+        flex: 1;
+    }
+    /* Responsive */
+    @@media(max-width: 768px) {
+    .page {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+    }
+</style>
+
+@code {
+protected override void OnInitialized()
+{
+ThemeService.OnThemeChanged += StateHasChanged;
+}
+
+public void Dispose()
+{
+ThemeService.OnThemeChanged -= StateHasChanged;
+}
+}

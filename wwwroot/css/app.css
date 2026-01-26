@@ -127,5 +127,28 @@ h1:focus {
 .nav-link.custom-nav-link.active {
     transition: background-color 0.25s, color 0.25s, box-shadow 0.25s;
 }
+.section { margin-bottom: 20px; }
+.mood-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; }
+.mood-btn {
+    padding: 8px 14px; border-radius: 20px; border: 1px solid #aaa;
+    background-color: #f0f0f0; cursor: pointer; transition: all 0.2s;
+}
+.mood-btn.active { background-color: #5b9a8b; color: white; border-color: #5b9a8b; }
+.mood-btn:hover { opacity: 0.8; }
+
+.tags-container { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 5px; }
+.tag {
+    padding: 4px 10px; border-radius: 12px; background-color: #eee; cursor: pointer; transition: 0.2s;
+}
+.tag.selected { background-color: #5b9a8b; color: white; }
+.tags-container input {
+    border: 1px solid #aaa; border-radius: 12px; padding: 4px 8px; width: 120px;
+}
+
+.save-btn {
+    background-color: #5b9a8b; color: white; padding: 10px 20px;
+    border: none; border-radius: 6px; cursor: pointer;
+}
+.save-btn:hover { opacity: 0.9; }
 
 

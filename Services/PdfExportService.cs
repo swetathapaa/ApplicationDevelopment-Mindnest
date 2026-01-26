@@ -44,9 +44,33 @@ namespace MindNestApp.Services
                         // Entries
                         foreach (var entry in entries)
                         {
-                            column.Item().Text(entry.DateTicks.ToString("yyyy-MM-dd HH:mm"))
+                            // Use new CreatedAtTicks
+                            var createdAt = new DateTime(entry.CreatedAtTicks);
+
+                            column.Item().Text(createdAt.ToString("yyyy-MM-dd HH:mm"))
                                 .Bold();
 
+                            // Mood info
+                            if (!string.IsNullOrWhiteSpace(entry.PrimaryMood))
+                            {
+                                string secondaryText = "";
+                                if (!string.IsNullOrWhiteSpace(entry.SecondaryMoods))
+                                {
+                                    var secs = entry.SecondaryMoods.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                                    secondaryText = " | Secondary: " + string.Join(", ", secs);
+                                }
+
+                                column.Item().Text($"Mood: {entry.PrimaryMood}{secondaryText} ({entry.MoodCategory})");
+                            }
+
+                            // Category & tags
+                            if (!string.IsNullOrWhiteSpace(entry.Category))
+                                column.Item().Text($"Category: {entry.Category}");
+
+                            if (!string.IsNullOrWhiteSpace(entry.Tags))
+                                column.Item().Text($"Tags: {entry.Tags}");
+
+                            // Content
                             column.Item().Text(entry.Content);
 
                             column.Item().PaddingBottom(10);
