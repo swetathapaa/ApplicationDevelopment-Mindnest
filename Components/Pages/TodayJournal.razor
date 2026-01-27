@@ -2,6 +2,7 @@
 @inject SQLiteService Db
 @inject NavigationManager Navigation
 @inject AuthStateService Auth
+<<<<<<< HEAD
 @inject IJSRuntime JSRuntime
 @using Microsoft.AspNetCore.Components.Web
 @using System.Web
@@ -171,6 +172,108 @@
         border: 1px solid #ccc;
         overflow-y: auto;
         background: #fffdf9;
+=======
+@using Microsoft.AspNetCore.Components.Web
+@using System.Web
+
+<h2>@(IsEditMode ? "Edit Journal" : "Write Your Journal")</h2>
+
+@if (Auth.CurrentUser == null)
+{
+    Navigation.NavigateTo("/login", true);
+    return;
+}
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <p class="error-text">@Error</p>
+}
+
+<!-- PRIMARY MOOD -->
+<div class="section">
+    <label><b>Primary Mood *</b></label>
+    <div class="pill-group">
+        @foreach (var mood in PrimaryMoods)
+        {
+            <button class="pill @(PrimaryMood == mood ? "active" : "")"
+                    @onclick="() => PrimaryMood = mood">
+                @mood
+            </button>
+        }
+    </div>
+</div>
+
+<!-- SECONDARY MOODS -->
+<div class="section">
+    <label><b>Secondary Moods (max 2)</b></label>
+    <div class="pill-group">
+        @foreach (var mood in SecondaryMoods)
+        {
+            <button class="pill @(SelectedSecondary.Contains(mood) ? "active" : "")"
+                    @onclick="() => ToggleSecondaryMood(mood)">
+                @mood
+            </button>
+        }
+    </div>
+</div>
+
+<!-- CATEGORY -->
+<div class="section">
+    <label><b>Category</b></label>
+    <div class="pill-group">
+        @foreach (var cat in Categories)
+        {
+            <button class="pill @(Category == cat ? "active" : "")"
+                    @onclick="() => Category = cat">
+                @cat
+            </button>
+        }
+    </div>
+</div>
+
+<!-- TAGS -->
+<div class="section">
+    <label><b>Tags (max 7)</b></label>
+
+    <div class="tags-wrap">
+        @foreach (var tag in UserTags)
+        {
+            <span class="tag @(SelectedTags.Contains(tag) ? "selected" : "")"
+                  @onclick="() => ToggleTag(tag)">
+                @tag
+            </span>
+        }
+    </div>
+
+    @if (SelectedTags.Count < 7)
+    {
+        <input class="tag-input"
+               placeholder="Add custom tag & press Enter"
+               @bind="NewTagInput"
+               @onkeydown="HandleTagInput" />
+    }
+</div>
+
+<!-- CONTENT -->
+<div class="section">
+    <label><b>Journal Entry</b></label>
+    <textarea class="journal-box"
+              rows="10"
+              @bind="Content"></textarea>
+</div>
+
+<button class="save-btn" @onclick="SaveEntry">
+    @(IsEditMode ? "Update Journal" : "Save Journal")
+</button>
+
+<style>
+    h2 {
+        margin-bottom: 1rem;
+    }
+
+    .section {
+        margin-bottom: 1.5rem;
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
     }
 
     .pill-group {
@@ -223,15 +326,29 @@
         border: 1px solid #ccc;
     }
 
+<<<<<<< HEAD
     .save-btn {
         margin-top: 1rem;
+=======
+    .journal-box {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+    }
+
+    .save-btn {
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
         padding: 0.6rem 1.4rem;
         border-radius: 8px;
         border: none;
         background: #3b3b3b;
         color: white;
         cursor: pointer;
+<<<<<<< HEAD
         align-self: flex-start;
+=======
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
     }
 
     .error-text {
@@ -241,20 +358,38 @@
 </style>
 
 @code {
+<<<<<<< HEAD
     private ElementReference editorRef;
     private string Content = "";
     private string PrimaryMood = "";
     private List<string> SelectedSecondary = new();
     private string Category = "";
+=======
+
+    // ---------- STATE ----------
+    private string PrimaryMood = "";
+    private List<string> SelectedSecondary = new();
+    private string Category = "";
+    private string Content = "";
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
     private string Error = "";
 
     private List<string> SelectedTags = new();
     private List<string> UserTags = new();
     private string NewTagInput = "";
 
+<<<<<<< HEAD
     private JournalEntry? CurrentEntry;
     private bool IsEditMode => CurrentEntry != null;
 
+=======
+    private string UserEmail = "";
+    private JournalEntry? CurrentEntry;
+
+    private bool IsEditMode => CurrentEntry != null;
+
+    // ---------- EXPANDED MOODS ----------
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
     private readonly List<string> PrimaryMoods = new()
     {
         "Calm", "Happy", "Energetic", "Content",
@@ -271,6 +406,7 @@
 
     private readonly List<string> Categories = new()
     {
+<<<<<<< HEAD
         "Personal", "Academic", "Work", "Health", "Relationships", "Self-Growth"
     };
 
@@ -278,6 +414,19 @@
     {
         if (Auth.CurrentUser == null) return;
         UserTags = await Db.GetUserTagsAsync(Auth.CurrentUser.Email);
+=======
+        "Personal", "Academic", "Work",
+        "Health", "Relationships", "Self-Growth"
+    };
+
+    // ---------- INIT ----------
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUser == null) return;
+
+        UserEmail = Auth.CurrentUser.Email;
+        UserTags = await Db.GetUserTagsAsync(UserEmail);
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
 
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
         var query = HttpUtility.ParseQueryString(uri.Query);
@@ -294,6 +443,7 @@
             Category = CurrentEntry.Category;
             SelectedTags = CurrentEntry.Tags?.Split(',').ToList() ?? new();
             Content = CurrentEntry.Content;
+<<<<<<< HEAD
             await Task.Delay(50);
             await SetEditorContent(Content);
         }
@@ -307,6 +457,12 @@
             SelectedSecondary.Add(mood);
     }
 
+=======
+        }
+    }
+
+    // ---------- TAG LOGIC ----------
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
     private void ToggleTag(string tag)
     {
         if (SelectedTags.Contains(tag))
@@ -324,7 +480,11 @@
 
         if (!UserTags.Contains(tag) && UserTags.Count < 7)
         {
+<<<<<<< HEAD
             await Db.AddUserTagAsync(Auth.CurrentUser.Email, tag);
+=======
+            await Db.AddUserTagAsync(UserEmail, tag);
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
             UserTags.Add(tag);
         }
 
@@ -332,6 +492,7 @@
         NewTagInput = "";
     }
 
+<<<<<<< HEAD
     private async Task FormatText(string command, string? value = null)
     {
         await JSRuntime.InvokeVoidAsync("formatText", editorRef, command, value ?? "");
@@ -348,6 +509,18 @@
         await JSRuntime.InvokeVoidAsync("setEditorContent", editorRef, html);
     }
 
+=======
+    // ---------- SECONDARY MOOD ----------
+    private void ToggleSecondaryMood(string mood)
+    {
+        if (SelectedSecondary.Contains(mood))
+            SelectedSecondary.Remove(mood);
+        else if (SelectedSecondary.Count < 2)
+            SelectedSecondary.Add(mood);
+    }
+
+    // ---------- SAVE ----------
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
     private async Task SaveEntry()
     {
         if (string.IsNullOrWhiteSpace(PrimaryMood))
@@ -363,13 +536,20 @@
         }
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+<<<<<<< HEAD
         var email = Auth.CurrentUser!.Email;
+=======
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
 
         if (CurrentEntry == null)
         {
             CurrentEntry = new JournalEntry
             {
+<<<<<<< HEAD
                 UserEmail = email,
+=======
+                UserEmail = UserEmail,
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
                 Content = Content,
                 PrimaryMood = PrimaryMood,
                 SecondaryMoods = string.Join(",", SelectedSecondary),

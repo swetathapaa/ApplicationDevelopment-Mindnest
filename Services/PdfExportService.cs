@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 using MindNestApp.Models;
@@ -5,6 +6,13 @@ using Microsoft.Maui.Storage;
 using System;
 using System.Collections.Generic;
 using System.IO;
+=======
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Microsoft.Maui.Storage;
+using MindNestApp.Models;
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
 
 namespace MindNestApp.Services
 {
@@ -12,6 +20,7 @@ namespace MindNestApp.Services
     {
         public string ExportJournalsToPdf(string userEmail, List<JournalEntry> entries)
         {
+<<<<<<< HEAD
             if (entries == null || entries.Count == 0)
                 throw new ArgumentException("No journal entries to export.");
 
@@ -57,3 +66,58 @@ namespace MindNestApp.Services
         }
     }
 }
+=======
+#if MACCATALYST
+            return ExportAsTextFallback(userEmail, entries);
+#else
+            return ExportAsPdf(userEmail, entries);
+#endif
+        }
+
+#if MACCATALYST
+        private string ExportAsTextFallback(string userEmail, List<JournalEntry> entries)
+        {
+            var filePath = Path.Combine(
+                FileSystem.AppDataDirectory,
+                $"MindNest_Journal_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
+            );
+
+            using var writer = new StreamWriter(filePath);
+
+            writer.WriteLine("MindNest – Journal Export");
+            writer.WriteLine($"User: {userEmail}");
+            writer.WriteLine($"Generated on: {DateTime.Now}");
+            writer.WriteLine(new string('-', 50));
+
+            foreach (var entry in entries)
+            {
+                writer.WriteLine($"Date: {new DateTime(entry.CreatedAtTicks):yyyy-MM-dd HH:mm}");
+                writer.WriteLine($"Category: {entry.Category}");
+                writer.WriteLine($"Mood: {entry.PrimaryMood}");
+
+                if (!string.IsNullOrWhiteSpace(entry.Tags))
+                    writer.WriteLine($"Tags: {entry.Tags}");
+
+                writer.WriteLine();
+                writer.WriteLine(entry.Content);
+                writer.WriteLine(new string('-', 50));
+            }
+
+            return filePath;
+        }
+#endif
+
+#if !MACCATALYST
+        private string ExportAsPdf(string userEmail, List<JournalEntry> entries)
+        {
+            // You can re-enable QuestPDF here later
+            // (for Windows builds only)
+
+            throw new NotImplementedException(
+                "PDF export is disabled on this platform."
+            );
+        }
+#endif
+    }
+}
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6

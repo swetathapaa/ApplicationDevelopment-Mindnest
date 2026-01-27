@@ -3,6 +3,7 @@
 @inject MindNestApp.Services.SQLiteService Db
 @inject AuthStateService Auth
 
+<<<<<<< HEAD
 <div class="auth-container">
 
     <!-- LEFT DECORATIVE SIDE -->
@@ -37,6 +38,29 @@
         </div>
     </div>
 </div>
+=======
+<h1>Login</h1>
+
+<input placeholder="Email"
+       @bind="email" />
+<br /><br />
+
+<input type="password"
+       placeholder="Password"
+       @bind="password" />
+<br /><br />
+
+<button @onclick="Login">Login</button>
+
+<p style="color:red">@message</p>
+
+<p>
+    Don’t have an account?
+    <a @onclick="GoToSignup" style="cursor:pointer;color:blue">
+        Sign up
+    </a>
+</p>
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
 
 @code {
     string email = "";
@@ -72,5 +96,12 @@
         Navigation.NavigateTo("/dashboard", true);
     }
 
+<<<<<<< HEAD
     void GoToSignup() => Navigation.NavigateTo("/signup");
+=======
+    void GoToSignup()
+    {
+        Navigation.NavigateTo("/signup");
+    }
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
 }

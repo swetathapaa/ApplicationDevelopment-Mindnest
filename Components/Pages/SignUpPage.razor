@@ -1,6 +1,7 @@
 @page "/signup"
 @inject NavigationManager Navigation
 @inject MindNestApp.Services.SQLiteService Db
+<<<<<<< HEAD
 @inject AuthStateService Auth
 
 <div class="auth-container">
@@ -81,11 +82,121 @@
         }
 
         await Db.AddUserAsync(new MindNestApp.Models.User
+=======
+
+<h1>Sign Up</h1>
+
+<input placeholder="Full Name" @bind="fullName" />
+<br />
+
+<input placeholder="Email" @bind="email" />
+<br />
+
+<input placeholder="Password" type="password" @bind="password" />
+<br />
+
+<input placeholder="Phone Number" @bind="phoneNumber" />
+<br />
+
+<input type="date" @bind="dateOfBirth" />
+<br />
+
+<select @bind="gender">
+    <option value="">Select Gender</option>
+    <option>Male</option>
+    <option>Female</option>
+    <option>Other</option>
+</select>
+
+<br /><br />
+
+<input type="checkbox" @bind="agreeToTerms" />
+<span>
+    I agree to the
+    <a @onclick="() => showTerms = true" style="cursor:pointer;color:blue">
+        Terms & Conditions and Privacy Policy
+    </a>
+</span>
+
+@if (showTerms)
+{
+    <div style="border:1px solid gray; padding:10px; margin-top:10px">
+        <b>Terms & Conditions</b>
+        <p>
+            By creating an account and using the MindNest application, 
+            you agree to the following terms and conditions. MindNest is a 
+            personal mental-wellbeing and journaling application designed 
+            for educational and personal use only. All data entered into the application,
+            including personal details and journal entries, is stored locally on the 
+            user’s device and is not shared with any third parties. The application does
+            not provide medical, psychological, or professional health advice, and should 
+            not be used as a substitute for professional consultation. Users are responsible
+            for maintaining the confidentiality of their login credentials. The developers 
+            of MindNest are not responsible for any data loss, emotional distress, 
+            or damages arising from the use or inability to use the application. 
+            Continued use of the application indicates acceptance of these terms.
+        </p>
+        <button @onclick="() => showTerms = false">Close</button>
+    </div>
+}
+
+<br /><br />
+
+<button @onclick="Signup">Create Account</button>
+
+<p style="color:red">@message</p>
+
+<p>
+    Already have an account?
+    <a @onclick="GoToLogin" style="cursor:pointer;color:blue">Login</a>
+</p>
+
+@code {
+    private string fullName = "";
+    private string email = "";
+    private string password = "";
+    private string phoneNumber = "";
+    private DateTime? dateOfBirth;
+    private string gender = "";
+
+    private bool agreeToTerms = false;
+    private bool showTerms = false;
+    private string message = "";
+
+    private async Task Signup()
+    {
+        if (string.IsNullOrWhiteSpace(fullName) ||
+            string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password) ||
+            string.IsNullOrWhiteSpace(phoneNumber) ||
+            dateOfBirth == null ||
+            string.IsNullOrWhiteSpace(gender))
+        {
+            message = "Please fill all the required fields.";
+            return;
+        }
+
+        if (!agreeToTerms)
+        {
+            message = "In order to proceed, please agree to the Terms & Conditions.";
+            return;
+        }
+
+        var existingUser = await Db.GetUserByEmailAsync(email);
+        if (existingUser != null)
+        {
+            message = "User already exists with the entered email, please log in.";
+            return;
+        }
+
+        var user = new User
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
         {
             FullName = fullName,
             Email = email,
             Password = password,
             PhoneNumber = phoneNumber,
+<<<<<<< HEAD
             DateOfBirth = dob ?? DateTime.Now,
             Gender = gender
         });
@@ -94,4 +205,21 @@
     }
 
     void GoToLogin() => Navigation.NavigateTo("/login");
+=======
+            DateOfBirth = dateOfBirth.Value,
+            Gender = gender
+        };
+
+        await Db.AddUserAsync(user);
+
+        message = "Account created successfully. Please login.";
+        await Task.Delay(1500);
+        Navigation.NavigateTo("/login", true);
+    }
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+>>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
 }
