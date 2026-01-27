@@ -1,0 +1,146 @@
+@page "/analytics"
+@inject SQLiteService Db
+@inject AuthStateService Auth
+@inject ThemeService Theme
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Analytics</PageTitle>
+
+<div class="analytics-page" style="padding:20px; background:@Theme.BackgroundColor; color:@Theme.TextColor; min-height:100vh;">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Analytics</h2>
+            <small style="color:@Theme.SecondaryTextColor;">Insights from your journaling journey</small>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="d-flex flex-wrap gap-3 mb-4">
+        @foreach(var card in StatCards)
+        {
+            <div style="background:@Theme.CardBackground; color:@Theme.TextColor; flex:1 1 200px; padding:20px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                <small>@card.Title</small>
+                <h3>@card.Value</h3>
+            </div>
+        }
+    </div>
+
+    <!-- Charts -->
+    <div class="d-flex flex-wrap gap-4">
+        <!-- Mood Chart -->
+        <div style="flex:1 1 400px; background:@Theme.CardBackground; padding:20px; border-radius:12px;">
+            <h5>Mood Distribution</h5>
+            @if(MoodChartData?.Datasets?.Any() == true)
+            {
+                <canvas id="moodChart" width="400" height="400"></canvas>
+            }
+            else
+            {
+                <p>No mood data available.</p>
+            }
+        </div>
+
+        <!-- Tags Chart -->
+        <div style="flex:1 1 400px; background:@Theme.CardBackground; padding:20px; border-radius:12px;">
+            <h5>Most Used Tags</h5>
+            @if(TagChartData?.Datasets?.Any() == true)
+            {
+                <canvas id="tagChart" width="400" height="400"></canvas>
+            }
+            else
+            {
+                <p>No tag data available.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<(string Title,int Value)> StatCards = new()
+    {
+        ("Current Streak",0),
+        ("Longest Streak",0),
+        ("Missed Days",0),
+        ("Total Entries",0)
+    };
+
+    private ChartData<double> MoodChartData = new ChartData<double>{Labels = new List<object>(), Datasets = new List<ChartDataset<double>>()};
+    private ChartData<double> TagChartData = new ChartData<double>{Labels = new List<object>(), Datasets = new List<ChartDataset<double>>()};
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            Theme.OnThemeChanged += StateHasChanged;
+
+            if(Auth.CurrentUser != null)
+            {
+                var entries = await Db.GetEntriesAsync(Auth.CurrentUser.Email) ?? new List<JournalEntry>();
+                ComputeStats(entries);
+                ComputeMoodChart(entries);
+                ComputeTagChart(entries);
+
+                // Trigger chart rendering via JS
+                await JSRuntime.InvokeVoidAsync("renderCharts", MoodChartData, TagChartData);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void ComputeStats(List<JournalEntry> entries)
+    {
+        if(!entries.Any()) return;
+
+        var ordered = entries.OrderBy(e => e.CreatedAt).ToList();
+        int currentStreak = 1, longestStreak = 1, tempStreak = 1, missedDays = 0;
+
+        for(int i=1;i<ordered.Count;i++)
+        {
+            int diff = (ordered[i].CreatedAt.Date - ordered[i-1].CreatedAt.Date).Days;
+            if(diff == 1){ tempStreak++; if(tempStreak>longestStreak) longestStreak=tempStreak; }
+            else if(diff>1){ missedDays += diff-1; tempStreak=1; }
+        }
+
+        StatCards[0] = ("Current Streak",currentStreak);
+        StatCards[1] = ("Longest Streak",longestStreak);
+        StatCards[2] = ("Missed Days",missedDays);
+        StatCards[3] = ("Total Entries",entries.Count);
+    }
+
+    private void ComputeMoodChart(List<JournalEntry> entries)
+    {
+        var moodCounts = new Dictionary<string,int>();
+        foreach(var e in entries)
+            if(!string.IsNullOrWhiteSpace(e.PrimaryMood))
+                moodCounts[e.PrimaryMood] = moodCounts.GetValueOrDefault(e.PrimaryMood,0)+1;
+
+        MoodChartData.Labels = moodCounts.Keys.Cast<object>().ToList();
+        MoodChartData.Datasets = new List<ChartDataset<double>>{
+            new ChartDataset<double>{Data = moodCounts.Values.Select(v=>(double)v).ToList(), BackgroundColor = moodCounts.Keys.Select((_,i)=>GetColor(i)).Cast<object>().ToList()}
+        };
+    }
+
+    private void ComputeTagChart(List<JournalEntry> entries)
+    {
+        var tagCounts = new Dictionary<string,int>();
+        foreach(var e in entries)
+        {
+            if(string.IsNullOrWhiteSpace(e.Tags)) continue;
+            foreach(var t in e.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                tagCounts[t] = tagCounts.GetValueOrDefault(t,0)+1;
+        }
+
+        TagChartData.Labels = tagCounts.Keys.Cast<object>().ToList();
+        TagChartData.Datasets = new List<ChartDataset<double>>{
+            new ChartDataset<double>{Label="Tag Count", Data = tagCounts.Values.Select(v=>(double)v).ToList(), BackgroundColor=tagCounts.Keys.Select((_,i)=>GetColor(i)).Cast<object>().ToList()}
+        };
+    }
+
+    private string GetColor(int index)
+    {
+        string[] colors = { "#FF6384","#36A2EB","#FFCE56","#4BC0C0","#9966FF","#FF9F40" };
+        return colors[index % colors.Length];
+    }
+}

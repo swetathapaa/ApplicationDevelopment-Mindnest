@@ -1,0 +1,203 @@
+@page "/journal-history"
+@inject MindNestApp.Services.SQLiteService Db
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject AuthStateService Auth
+@inject ThemeService Theme
+
+<PageTitle>Journal History</PageTitle>
+
+<div class="journal-page" style="padding:20px; max-width:900px; margin:auto; background:@Theme.BackgroundColor; color:@Theme.TextColor; min-height:100vh;">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 style="margin:0;">Journal History</h1>
+        <div class="d-flex gap-2">
+            <button class="btn-primary" @onclick="NewEntry">New Entry</button>
+            <button class="btn-accent" @onclick="ExportPdf">Export PDF</button>
+        </div>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="d-flex gap-2 mb-4">
+        <input type="text" placeholder="Search journals..." class="form-input" @bind="SearchText" @bind:event="oninput" />
+        <select class="form-select" @bind="SelectedFilter">
+            <option value="">All Categories</option>
+            @foreach (var cat in categories ?? new List<string>())
+            {
+                <option value="@cat">@cat</option>
+            }
+        </select>
+    </div>
+
+    <!-- Journal Cards -->
+    <div class="journal-cards d-flex flex-column gap-3">
+        @if (PagedEntries != null && PagedEntries.Any())
+        {
+            @foreach (var entry in PagedEntries)
+            {
+                <div class="card" style="background:@Theme.CardBackground; color:@Theme.TextColor; padding:15px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">@(!string.IsNullOrEmpty(entry.Category) ? entry.Category : "Untitled")</span>
+                        <span class="text-muted" style="font-size:0.85em;">
+                            @((entry.Content?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length ?? 0) + " words")
+                        </span>
+                    </div>
+
+                    <div class="text-secondary mb-2" style="font-size:0.85em;">
+                        @entry.CreatedAt.ToString("dddd, dd MMMM yyyy")
+                        @if (entry.UpdatedAt > entry.CreatedAt)
+                        {
+                            <span style="font-size:0.75em;"> (Updated)</span>
+                        }
+                    </div>
+
+                    <div style="margin-bottom:6px;">
+                        @((!string.IsNullOrEmpty(entry.Content) && entry.Content.Length > 250)
+                            ? new MarkupString(entry.Content.Substring(0, 250) + "...")
+                            : new MarkupString(entry.Content ?? ""))
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(entry.Tags))
+                    {
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            @foreach (var tag in entry.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <span style="background:@Theme.PillBackground; padding:3px 8px; border-radius:8px; font-size:0.75em;">#@tag.Trim()</span>
+                            }
+                        </div>
+                    }
+
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn-primary btn-sm" @onclick="() => EditEntry(entry)">Update</button>
+                        <button class="btn-danger btn-sm" @onclick="() => DeleteEntry(entry)">Delete</button>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p class="text-secondary">No journals found.</p>
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (TotalPages > 1)
+    {
+        <div class="d-flex gap-2 justify-content-center mt-3">
+            <button class="btn btn-light" @onclick="PrevPage" disabled="@(_currentPage == 1)">Previous</button>
+            <span>Page @_currentPage of @TotalPages</span>
+            <button class="btn btn-light" @onclick="NextPage" disabled="@(_currentPage == TotalPages)">Next</button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<JournalEntry> allEntries = new();
+    private List<JournalEntry> filteredEntries = new();
+    private List<string> categories = new();
+
+    private string searchText = "";
+    private string selectedFilter = "";
+
+    private string SearchText
+    {
+        get => searchText;
+        set { searchText = value; ApplyFilter(); }
+    }
+
+    private string SelectedFilter
+    {
+        get => selectedFilter;
+        set { selectedFilter = value; ApplyFilter(); }
+    }
+
+    private int _currentPage = 1;
+    private int PageSize = 3; // number of journals per page
+    private int TotalPages => (int)Math.Ceiling((filteredEntries?.Count ?? 0) / (double)PageSize);
+
+    private List<JournalEntry> PagedEntries => filteredEntries
+        ?.Skip((_currentPage - 1) * PageSize)
+        .Take(PageSize)
+        .ToList() ?? new List<JournalEntry>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUser == null)
+        {
+            Navigation.NavigateTo("/login", true);
+            return;
+        }
+
+        var currentUserEmail = Auth.CurrentUser.Email;
+        allEntries = await Db.GetEntriesAsync(currentUserEmail);
+
+        categories = allEntries
+            .Select(e => e.Category)
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Distinct()
+            .ToList();
+
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        filteredEntries = allEntries?
+            .Where(e =>
+                (string.IsNullOrEmpty(searchText) || (e.Content?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+                (string.IsNullOrEmpty(selectedFilter) || e.Category == selectedFilter))
+            .ToList() ?? new List<JournalEntry>();
+
+        _currentPage = 1; // reset page to first after filtering
+    }
+
+    private void PrevPage()
+    {
+        if (_currentPage > 1) _currentPage--;
+    }
+
+    private void NextPage()
+    {
+        if (_currentPage < TotalPages) _currentPage++;
+    }
+
+    private void NewEntry() => Navigation.NavigateTo("/write-journal");
+    private void EditEntry(JournalEntry entry) => Navigation.NavigateTo($"/write-journal?editId={entry.Id}");
+
+    private async Task ExportPdf()
+    {
+        if (filteredEntries == null || !filteredEntries.Any())
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "No journals to export!");
+            return;
+        }
+
+        try
+        {
+            var pdfService = new PdfExportService();
+            var path = pdfService.ExportJournalsToPdf(Auth.CurrentUser.Email, filteredEntries);
+            await JSRuntime.InvokeVoidAsync("alert", $"PDF exported to: {path}");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error exporting PDF: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteEntry(JournalEntry entry)
+    {
+        if (entry == null) return;
+
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Delete journal '{entry.Category ?? "Untitled"}'?");
+        if (confirmed)
+        {
+            var deleted = await Db.DeleteEntryAsync(entry);
+            if (deleted > 0)
+            {
+                allEntries.Remove(entry);
+                ApplyFilter();
+            }
+        }
+    }
+}

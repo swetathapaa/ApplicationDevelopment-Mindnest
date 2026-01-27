@@ -1,0 +1,24 @@
+# .NET / MAUI build output
+bin/
+obj/
+
+# Rider / IDE files
+.idea/v
+.vs/
+*.user
+*.suo
+
+# macOS junk
+.DS_Store
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Publish output
+AppPackages/
+

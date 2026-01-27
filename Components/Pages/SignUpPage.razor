@@ -1,0 +1,97 @@
+@page "/signup"
+@inject NavigationManager Navigation
+@inject MindNestApp.Services.SQLiteService Db
+@inject AuthStateService Auth
+
+<div class="auth-container">
+
+    <!-- LEFT DECORATIVE SIDE -->
+    <div class="auth-visual">
+        <div class="bubble-wrapper">
+            <div class="bubble-main">
+                <div>
+                    <h2>Hello There!</h2>
+                    <p>Start your mindful journey<br />by signing up</p>
+                </div>
+            </div>
+            <div class="bubble-small bubble-top-left"></div>
+            <div class="bubble-small bubble-bottom-right"></div>
+        </div>
+    </div>
+
+    <!-- RIGHT FORM -->
+    <div class="auth-form">
+        <div class="form-card">
+            <h2>Sign Up</h2>
+
+            <input placeholder="Full Name" @bind="fullName" />
+            <input placeholder="Email" @bind="email" />
+            <input type="password" placeholder="Password" @bind="password" />
+            <input placeholder="Phone Number" @bind="phoneNumber" />
+            <input type="date" @bind="dob" placeholder="Date of Birth" />
+            <select @bind="gender">
+                <option value="">Select Gender</option>
+                <option>Male</option>
+                <option>Female</option>
+                <option>Other</option>
+            </select>
+
+            <div class="terms-container">
+                <input type="checkbox" id="terms" @bind="acceptedTerms" />
+                <label for="terms">I agree to the
+                    <span class="terms-link">Terms & Privacy
+                        <span class="terms-tooltip">
+                            Terms and Privacy Policy content goes here...
+                        </span>
+                    </span>
+                </label>
+            </div>
+
+            <p class="error">@message</p>
+
+            <button class="btn-primary" @onclick="Signup" disabled="@(acceptedTerms == false)">Create Account</button>
+
+            <div class="switch">
+                Already have an account? <span @onclick="GoToLogin">Login</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    string fullName = "";
+    string email = "";
+    string password = "";
+    string phoneNumber = "";
+    DateTime? dob;
+    string gender = "";
+    bool acceptedTerms = false;
+    string message = "";
+
+    async Task Signup()
+    {
+        message = "";
+
+        if (string.IsNullOrWhiteSpace(fullName) ||
+            string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password))
+        {
+            message = "Full Name, Email, and Password are required.";
+            return;
+        }
+
+        await Db.AddUserAsync(new MindNestApp.Models.User
+        {
+            FullName = fullName,
+            Email = email,
+            Password = password,
+            PhoneNumber = phoneNumber,
+            DateOfBirth = dob ?? DateTime.Now,
+            Gender = gender
+        });
+
+        Navigation.NavigateTo("/login");
+    }
+
+    void GoToLogin() => Navigation.NavigateTo("/login");
+}

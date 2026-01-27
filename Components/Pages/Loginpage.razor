@@ -1,0 +1,76 @@
+@page "/login"
+@inject NavigationManager Navigation
+@inject MindNestApp.Services.SQLiteService Db
+@inject AuthStateService Auth
+
+<div class="auth-container">
+
+    <!-- LEFT DECORATIVE SIDE -->
+    <div class="auth-visual">
+        <div class="bubble-wrapper">
+            <div class="bubble-main">
+                <div>
+                    <h2>Welcome Back!</h2>
+                    <p>Continue your journey<br />of self-reflection & mindfulness</p>
+                </div>
+            </div>
+            <div class="bubble-small bubble-top-left"></div>
+            <div class="bubble-small bubble-bottom-right"></div>
+        </div>
+    </div>
+
+    <!-- RIGHT FORM -->
+    <div class="auth-form">
+        <div class="form-card">
+            <h2>Login</h2>
+
+            <input placeholder="Email" @bind="email" />
+            <input type="password" placeholder="Password" @bind="password" />
+
+            <p class="error">@message</p>
+
+            <button class="btn-primary" @onclick="Login">Login</button>
+
+            <div class="switch">
+                Don’t have an account? <span @onclick="GoToSignup">Sign up</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    string email = "";
+    string password = "";
+    string message = "";
+
+    async Task Login()
+    {
+        message = "";
+
+        if (string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password))
+        {
+            message = "Email and password are required.";
+            return;
+        }
+
+        var user = await Db.GetUserByEmailAsync(email);
+
+        if (user == null)
+        {
+            message = "User does not exist.";
+            return;
+        }
+
+        if (user.Password != password)
+        {
+            message = "Incorrect password.";
+            return;
+        }
+
+        Auth.Login(user);
+        Navigation.NavigateTo("/dashboard", true);
+    }
+
+    void GoToSignup() => Navigation.NavigateTo("/signup");
+}

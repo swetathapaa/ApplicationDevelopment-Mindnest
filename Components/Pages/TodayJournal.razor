@@ -1,0 +1,398 @@
+@page "/write-journal"
+@inject SQLiteService Db
+@inject NavigationManager Navigation
+@inject AuthStateService Auth
+@inject IJSRuntime JSRuntime
+@using Microsoft.AspNetCore.Components.Web
+@using System.Web
+
+<div class="journal-page">
+
+    @if (Auth.CurrentUser == null)
+    {
+        Navigation.NavigateTo("/login", true);
+        return;
+    }
+
+    <h2>@(IsEditMode ? "Edit Journal" : "Write Your Journal")</h2>
+
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <p class="error-text">@Error</p>
+    }
+
+    <div class="journal-layout">
+
+        <!-- LEFT: Text Editor -->
+        <section class="editor-section">
+            <div class="rich-text-toolbar">
+                <button class="toolbar-btn" @onclick='() => FormatText("bold")'><strong>B</strong></button>
+                <button class="toolbar-btn" @onclick='() => FormatText("italic")'><em>I</em></button>
+                <button class="toolbar-btn" @onclick='() => FormatText("underline")'><u>U</u></button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" @onclick='() => FormatText("insertUnorderedList")'>&bull;</button>
+                <button class="toolbar-btn" @onclick='() => FormatText("insertOrderedList")'>1.</button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" @onclick='() => FormatText("formatBlock","h2")'>H</button>
+            </div>
+
+            <div class="rich-text-editor"
+                 contenteditable="true"
+                 @ref="editorRef"
+                 @oninput="OnContentChanged"
+                 data-placeholder="Write your journal here...">
+            </div>
+
+            <button class="save-btn" @onclick="SaveEntry">
+                @(IsEditMode ? "Update Journal" : "Save Journal")
+            </button>
+        </section>
+
+        <!-- RIGHT: Moods, Categories, Tags -->
+        <section class="meta-section">
+
+            <!-- PRIMARY MOOD -->
+            <div class="section">
+                <label><b>Primary Mood *</b></label>
+                <div class="pill-group">
+                    @foreach (var mood in PrimaryMoods)
+                    {
+                        <button class="pill @(PrimaryMood == mood ? "active" : "")"
+                                @onclick="() => PrimaryMood = mood">
+                            @mood
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- SECONDARY MOODS -->
+            <div class="section">
+                <label><b>Secondary Moods (max 2)</b></label>
+                <div class="pill-group">
+                    @foreach (var mood in SecondaryMoods)
+                    {
+                        <button class="pill @(SelectedSecondary.Contains(mood) ? "active" : "")"
+                                @onclick="() => ToggleSecondaryMood(mood)">
+                            @mood
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- CATEGORY -->
+            <div class="section">
+                <label><b>Category</b></label>
+                <div class="pill-group">
+                    @foreach (var cat in Categories)
+                    {
+                        <button class="pill @(Category == cat ? "active" : "")"
+                                @onclick="() => Category = cat">
+                            @cat
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- TAGS -->
+            <div class="section">
+                <label><b>Tags (max 7)</b></label>
+                <div class="tags-wrap">
+                    @foreach (var tag in UserTags)
+                    {
+                        <span class="tag @(SelectedTags.Contains(tag) ? "selected" : "")"
+                              @onclick="() => ToggleTag(tag)">
+                            @tag
+                        </span>
+                    }
+                </div>
+
+                @if (SelectedTags.Count < 7)
+                {
+                    <input class="tag-input"
+                           placeholder="Add custom tag & press Enter"
+                           @bind="NewTagInput"
+                           @onkeydown="HandleTagInput" />
+                }
+            </div>
+
+        </section>
+    </div>
+</div>
+
+<style>
+    .journal-page h2 {
+        margin-bottom: 1rem;
+    }
+
+    .journal-layout {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+    }
+
+    .editor-section {
+        flex: 2;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .meta-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .rich-text-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .toolbar-btn {
+        padding: 0.4rem 0.8rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #f5f5f2;
+        cursor: pointer;
+    }
+
+    .toolbar-separator {
+        width: 1px;
+        background: #ccc;
+        margin: 0 0.3rem;
+    }
+
+    .rich-text-editor {
+        min-height: 300px;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        overflow-y: auto;
+        background: #fffdf9;
+    }
+
+    .pill-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .pill {
+        padding: 0.4rem 0.9rem;
+        border-radius: 20px;
+        border: 1px solid #ccc;
+        background: #f5f5f2;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    .pill.active {
+        background: #e8e3dc;
+        border-color: #999;
+        font-weight: 600;
+    }
+
+    .tags-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .tag {
+        padding: 0.35rem 0.75rem;
+        border-radius: 14px;
+        background: #efede9;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .tag.selected {
+        background: #d9d4cc;
+        font-weight: 600;
+    }
+
+    .tag-input {
+        margin-top: 0.6rem;
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+    }
+
+    .save-btn {
+        margin-top: 1rem;
+        padding: 0.6rem 1.4rem;
+        border-radius: 8px;
+        border: none;
+        background: #3b3b3b;
+        color: white;
+        cursor: pointer;
+        align-self: flex-start;
+    }
+
+    .error-text {
+        color: #b00020;
+        margin-bottom: 1rem;
+    }
+</style>
+
+@code {
+    private ElementReference editorRef;
+    private string Content = "";
+    private string PrimaryMood = "";
+    private List<string> SelectedSecondary = new();
+    private string Category = "";
+    private string Error = "";
+
+    private List<string> SelectedTags = new();
+    private List<string> UserTags = new();
+    private string NewTagInput = "";
+
+    private JournalEntry? CurrentEntry;
+    private bool IsEditMode => CurrentEntry != null;
+
+    private readonly List<string> PrimaryMoods = new()
+    {
+        "Calm", "Happy", "Energetic", "Content",
+        "Sad", "Anxious", "Irritated", "Overwhelmed",
+        "Low Energy", "Confused", "Numb"
+    };
+
+    private readonly List<string> SecondaryMoods = new()
+    {
+        "Motivated", "Hopeful", "Grateful", "Restless",
+        "Tired", "Lonely", "Self-Critical", "Guilty",
+        "Frustrated", "Detached"
+    };
+
+    private readonly List<string> Categories = new()
+    {
+        "Personal", "Academic", "Work", "Health", "Relationships", "Self-Growth"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUser == null) return;
+        UserTags = await Db.GetUserTagsAsync(Auth.CurrentUser.Email);
+
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = HttpUtility.ParseQueryString(uri.Query);
+
+        if (int.TryParse(query["editId"], out int editId))
+        {
+            CurrentEntry = await Db.GetEntryByIdAsync(editId);
+        }
+
+        if (CurrentEntry != null)
+        {
+            PrimaryMood = CurrentEntry.PrimaryMood;
+            SelectedSecondary = CurrentEntry.SecondaryMoods?.Split(',').ToList() ?? new();
+            Category = CurrentEntry.Category;
+            SelectedTags = CurrentEntry.Tags?.Split(',').ToList() ?? new();
+            Content = CurrentEntry.Content;
+            await Task.Delay(50);
+            await SetEditorContent(Content);
+        }
+    }
+
+    private void ToggleSecondaryMood(string mood)
+    {
+        if (SelectedSecondary.Contains(mood))
+            SelectedSecondary.Remove(mood);
+        else if (SelectedSecondary.Count < 2)
+            SelectedSecondary.Add(mood);
+    }
+
+    private void ToggleTag(string tag)
+    {
+        if (SelectedTags.Contains(tag))
+            SelectedTags.Remove(tag);
+        else if (SelectedTags.Count < 7)
+            SelectedTags.Add(tag);
+    }
+
+    private async Task HandleTagInput(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter") return;
+
+        var tag = NewTagInput.Trim();
+        if (string.IsNullOrWhiteSpace(tag)) return;
+
+        if (!UserTags.Contains(tag) && UserTags.Count < 7)
+        {
+            await Db.AddUserTagAsync(Auth.CurrentUser.Email, tag);
+            UserTags.Add(tag);
+        }
+
+        ToggleTag(tag);
+        NewTagInput = "";
+    }
+
+    private async Task FormatText(string command, string? value = null)
+    {
+        await JSRuntime.InvokeVoidAsync("formatText", editorRef, command, value ?? "");
+        await editorRef.FocusAsync();
+    }
+
+    private async Task OnContentChanged()
+    {
+        Content = await JSRuntime.InvokeAsync<string>("getEditorContent", editorRef) ?? "";
+    }
+
+    private async Task SetEditorContent(string html)
+    {
+        await JSRuntime.InvokeVoidAsync("setEditorContent", editorRef, html);
+    }
+
+    private async Task SaveEntry()
+    {
+        if (string.IsNullOrWhiteSpace(PrimaryMood))
+        {
+            Error = "Primary mood is required.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Content))
+        {
+            Error = "Journal content cannot be empty.";
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var email = Auth.CurrentUser!.Email;
+
+        if (CurrentEntry == null)
+        {
+            CurrentEntry = new JournalEntry
+            {
+                UserEmail = email,
+                Content = Content,
+                PrimaryMood = PrimaryMood,
+                SecondaryMoods = string.Join(",", SelectedSecondary),
+                Category = Category,
+                Tags = string.Join(",", SelectedTags),
+                CreatedAtTicks = now,
+                UpdatedAtTicks = now
+            };
+
+            await Db.AddEntryAsync(CurrentEntry);
+        }
+        else
+        {
+            CurrentEntry.Content = Content;
+            CurrentEntry.PrimaryMood = PrimaryMood;
+            CurrentEntry.SecondaryMoods = string.Join(",", SelectedSecondary);
+            CurrentEntry.Category = Category;
+            CurrentEntry.Tags = string.Join(",", SelectedTags);
+            CurrentEntry.UpdatedAtTicks = now;
+
+            await Db.UpdateEntryAsync(CurrentEntry);
+        }
+
+        Navigation.NavigateTo("/journal-history");
+    }
+}

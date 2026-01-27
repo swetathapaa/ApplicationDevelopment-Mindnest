@@ -1,0 +1,17 @@
+@page "/"
+@inject NavigationManager Navigation
+@inject AuthStateService Auth
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (Auth.CurrentUser == null)
+        {
+            Navigation.NavigateTo("/login", true);
+        }
+        else
+        {
+            Navigation.NavigateTo("/write_journal", true);
+        }
+    }
+}

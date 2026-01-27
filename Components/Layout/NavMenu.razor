@@ -1,0 +1,44 @@
+﻿@inject NavigationManager Navigation
+@inject AuthStateService Auth
+
+<div class="nav-scrollable" style="background-color:#fff8db; height:100vh; padding:15px; box-shadow: 2px 0 5px rgba(0,0,0,0.1);">
+    <nav class="nav flex-column">
+
+        <NavLink href="/dashboard" class="nav-link custom-nav-link" Match="NavLinkMatch.All">
+            Dashboard
+        </NavLink>
+
+        <NavLink href="/write-journal" class="nav-link custom-nav-link">
+            Write Journal
+        </NavLink>
+
+        <NavLink href="/journal-history" class="nav-link custom-nav-link">
+            Journal History
+        </NavLink>
+
+        <NavLink href="/calendar" class="nav-link custom-nav-link">
+            Calendar
+        </NavLink>
+        <NavLink href="/analytics" class="nav-link custom-nav-link">
+            Analytics
+        </NavLink>
+        <NavLink href="/settings" class="nav-link custom-nav-link">
+            Settings
+        </NavLink>
+
+        
+
+        <a href="#" @onclick="Logout" class="nav-link custom-nav-link" style="margin-top:20px;">
+            Logout
+        </a>
+
+    </nav>
+</div>
+
+@code {
+    private void Logout()
+    {
+        Auth.Logout();
+        Navigation.NavigateTo("/login", true);
+    }
+}
