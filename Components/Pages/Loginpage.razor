@@ -5,17 +5,19 @@
 
 <div class="auth-container">
 
-    <!-- LEFT DECORATIVE SIDE -->
+    <!-- LEFT VISUAL -->
     <div class="auth-visual">
         <div class="bubble-wrapper">
-            <div class="bubble-main">
-                <div>
-                    <h2>Welcome Back!</h2>
-                    <p>Continue your journey<br />of self-reflection & mindfulness</p>
+            <div class="bubble-main-circle">
+                <div class="circle-text">
+                    Welcome Back!<br />
+                    Continue your journey<br />
+                    of self-reflection &<br />
+                    mindfulness journaling
                 </div>
             </div>
-            <div class="bubble-small bubble-top-left"></div>
-            <div class="bubble-small bubble-bottom-right"></div>
+            <div class="bubble-transparent top"></div>
+            <div class="bubble-transparent bottom"></div>
         </div>
     </div>
 
@@ -24,11 +26,15 @@
         <div class="form-card">
             <h2>Login</h2>
 
-            <input placeholder="Email" @bind="email" />
-            <input type="password" placeholder="Password" @bind="password" />
+            <div class="form-group">
+                <input placeholder="Email" @bind="email" />
+            </div>
+
+            <div class="form-group">
+                <input type="password" placeholder="Password" @bind="password" />
+            </div>
 
             <p class="error">@message</p>
-
             <button class="btn-primary" @onclick="Login">Login</button>
 
             <div class="switch">
@@ -46,27 +52,15 @@
     async Task Login()
     {
         message = "";
-
-        if (string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
             message = "Email and password are required.";
             return;
         }
 
         var user = await Db.GetUserByEmailAsync(email);
-
-        if (user == null)
-        {
-            message = "User does not exist.";
-            return;
-        }
-
-        if (user.Password != password)
-        {
-            message = "Incorrect password.";
-            return;
-        }
+        if (user == null) { message = "User does not exist."; return; }
+        if (user.Password != password) { message = "Incorrect password."; return; }
 
         Auth.Login(user);
         Navigation.NavigateTo("/dashboard", true);

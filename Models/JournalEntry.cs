@@ -11,12 +11,13 @@ namespace MindNestApp.Models
         public string UserEmail { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
 
-        // Store ticks directly
+        // Store ticks
         public long CreatedAtTicks { get; set; }
         public long UpdatedAtTicks { get; set; }
 
-        public DateTime CreatedAt => CreatedAtTicks > 0 ? new DateTime(CreatedAtTicks, DateTimeKind.Utc) : DateTime.MinValue;
-        public DateTime UpdatedAt => UpdatedAtTicks > 0 ? new DateTime(UpdatedAtTicks, DateTimeKind.Utc) : DateTime.MinValue;
+        // Convert to local DateTime when reading
+        public DateTime CreatedAt => CreatedAtTicks > 0 ? new DateTime(CreatedAtTicks, DateTimeKind.Utc).ToLocalTime() : DateTime.MinValue;
+        public DateTime UpdatedAt => UpdatedAtTicks > 0 ? new DateTime(UpdatedAtTicks, DateTimeKind.Utc).ToLocalTime() : DateTime.MinValue;
 
         // Moods
         public string PrimaryMood { get; set; } = string.Empty;

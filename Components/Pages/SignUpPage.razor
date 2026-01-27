@@ -5,17 +5,19 @@
 
 <div class="auth-container">
 
-    <!-- LEFT DECORATIVE SIDE -->
+    <!-- LEFT VISUAL -->
     <div class="auth-visual">
         <div class="bubble-wrapper">
-            <div class="bubble-main">
-                <div>
-                    <h2>Hello There!</h2>
-                    <p>Start your mindful journey<br />by signing up</p>
+            <div class="bubble-main-circle">
+                <div class="circle-text">
+                    🌿<br />
+                    Start your journey<br />
+                    Creative private space<br />
+                    for self-reflection
                 </div>
             </div>
-            <div class="bubble-small bubble-top-left"></div>
-            <div class="bubble-small bubble-bottom-right"></div>
+            <div class="bubble-transparent top"></div>
+            <div class="bubble-transparent bottom"></div>
         </div>
     </div>
 
@@ -24,58 +26,67 @@
         <div class="form-card">
             <h2>Sign Up</h2>
 
-            <input placeholder="Full Name" @bind="fullName" />
-            <input placeholder="Email" @bind="email" />
-            <input type="password" placeholder="Password" @bind="password" />
-            <input placeholder="Phone Number" @bind="phoneNumber" />
-            <input type="date" @bind="dateOfBirth" />
-            <select @bind="gender">
-                <option value="">Select Gender</option>
-                <option>Male</option>
-                <option>Female</option>
-                <option>Other</option>
-            </select>
-
-            <div class="terms-container">
-                <input type="checkbox" id="terms" @bind="agreeToTerms" />
-                <label for="terms">
-                    I agree to the 
-                    <span class="terms-link" @onclick="() => showTerms = true" style="cursor:pointer;color:blue">
-                        Terms & Conditions and Privacy Policy
-                    </span>
-                </label>
-            </div>
-
-            @if (showTerms)
+            @if (!string.IsNullOrEmpty(message))
             {
-                <div class="terms-popup">
-                    <b>Terms & Conditions</b>
-                    <p>
-                        By creating an account and using the MindNest application, 
-                        you agree to the following terms and conditions. MindNest is a 
-                        personal mental-wellbeing and journaling application designed 
-                        for educational and personal use only. All data entered into the application,
-                        including personal details and journal entries, is stored locally on the 
-                        user’s device and is not shared with any third parties. The application does
-                        not provide medical, psychological, or professional health advice, and should 
-                        not be used as a substitute for professional consultation. Users are responsible
-                        for maintaining the confidentiality of their login credentials. The developers 
-                        of MindNest are not responsible for any data loss, emotional distress, 
-                        or damages arising from the use or inability to use the application. 
-                        Continued use of the application indicates acceptance of these terms.
-                    </p>
-                    <button @onclick="() => showTerms = false">Close</button>
-                </div>
+                <p class="error">@message</p>
             }
 
-            <p class="error">@message</p>
+            <div class="form-group">
+                <input class="form-input" placeholder="Full Name" @bind="fullName" />
+            </div>
 
-            <button class="btn-primary" @onclick="Signup" disabled="@(agreeToTerms == false)">
-                Create Account
-            </button>
+            <div class="form-group">
+                <input class="form-input" placeholder="Email" @bind="email" />
+            </div>
+
+            <div class="form-group">
+                <input class="form-input" type="password" placeholder="Password" @bind="password" />
+            </div>
+
+            <div class="form-group">
+                <input class="form-input" type="password" placeholder="Confirm Password" @bind="confirmPassword" />
+            </div>
+
+            <div class="form-group">
+                <input class="form-input" placeholder="Phone Number" @bind="phoneNumber" />
+            </div>
+
+            <!-- Date of Birth with proper rectangle styling -->
+            <div class="form-group">
+                <input class="form-input date-input" type="date" @bind="dateOfBirth" />
+
+
+
+            </div>
+
+
+
+            <div class="form-group">
+                <select class="form-select" @bind="gender">
+                    <option value="">Select Gender</option>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                </select>
+            </div>
+
+            <!-- Terms & Conditions Toggle -->
+            <div class="terms-container">
+                <div class="agree-toggle @(agreeToTerms ? "agreed" : "")" @onclick="() => agreeToTerms = !agreeToTerms">
+                    @(agreeToTerms ? "✓ Agreed" : "Agree")
+                </div>
+                <span>I agree to the <span class="terms-link">Terms & Conditions</span></span>
+
+                <div class="terms-tooltip">
+                    By signing up, you agree to our full terms of service and privacy policy.
+                </div>
+            </div>
+
+            <!-- Create Account Button -->
+            <button class="btn-primary" @onclick="Signup">Create Account</button>
 
             <div class="switch">
-                Already have an account? <span @onclick="GoToLogin" style="cursor:pointer;color:blue">Login</span>
+                Already have an account? <span @onclick="GoToLogin">Login</span>
             </div>
         </div>
     </div>
@@ -85,43 +96,75 @@
     private string fullName = "";
     private string email = "";
     private string password = "";
+    private string confirmPassword = "";
     private string phoneNumber = "";
-    private DateTime? dateOfBirth;
     private string gender = "";
-
+    private DateTime? dateOfBirth;
     private bool agreeToTerms = false;
-    private bool showTerms = false;
     private string message = "";
 
     private async Task Signup()
     {
         message = "";
 
-        if (string.IsNullOrWhiteSpace(fullName) ||
-            string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(password) ||
-            string.IsNullOrWhiteSpace(phoneNumber) ||
-            dateOfBirth == null ||
-            string.IsNullOrWhiteSpace(gender))
+        // VALIDATIONS
+        if (string.IsNullOrWhiteSpace(fullName))
         {
-            message = "Please fill all the required fields.";
+            message = "Full name is required.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            message = "Email is required.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            message = "Password is required.";
+            return;
+        }
+
+        if (password != confirmPassword)
+        {
+            message = "Passwords do not match.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            message = "Phone number is required.";
+            return;
+        }
+
+        if (dateOfBirth == null)
+        {
+            message = "Please select your date of birth.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(gender))
+        {
+            message = "Please select your gender.";
             return;
         }
 
         if (!agreeToTerms)
         {
-            message = "In order to proceed, please agree to the Terms & Conditions.";
+            message = "You must agree to the Terms & Conditions.";
             return;
         }
 
         var existingUser = await Db.GetUserByEmailAsync(email);
         if (existingUser != null)
         {
-            message = "User already exists with the entered email, please log in.";
+            message = "An account with this email already exists.";
             return;
         }
 
-        var user = new MindNestApp.Models.User
+        // CREATE USER
+        await Db.AddUserAsync(new MindNestApp.Models.User
         {
             FullName = fullName,
             Email = email,
@@ -129,17 +172,15 @@
             PhoneNumber = phoneNumber,
             DateOfBirth = dateOfBirth.Value,
             Gender = gender
-        };
+        });
 
-        await Db.AddUserAsync(user);
+        // CONFIRMATION MESSAGE
+        message = "Account created successfully! You will be redirected to login...";
+        StateHasChanged();
 
-        message = "Account created successfully. Redirecting to login...";
-        await Task.Delay(1500);
+        await Task.Delay(2000); // wait 2 seconds so user can see message
         Navigation.NavigateTo("/login", true);
     }
 
-    private void GoToLogin()
-    {
-        Navigation.NavigateTo("/login");
-    }
+    void GoToLogin() => Navigation.NavigateTo("/login");
 }

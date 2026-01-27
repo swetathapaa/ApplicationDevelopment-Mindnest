@@ -12,42 +12,23 @@
 </head>
 
 <body>
+<div class="status-bar-safe-area"></div>
 
-    <div class="status-bar-safe-area"></div>
+<div id="app">Loading...</div>
 
-    <div id="app">Loading...</div>
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
 
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="" class="reload">Reload</a>
-        <a class="dismiss">🗙</a>
-    </div>
+<script src="_framework/blazor.webview.js" autostart="false"></script>
 
-    <script src="_framework/blazor.webview.js" autostart="false"></script>
-<<<<<<< HEAD
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        window.renderCharts = function(moodData, tagData) {
-            var moodCtx = document.getElementById('moodChart').getContext('2d');
-            new Chart(moodCtx, {
-                type: 'doughnut',
-                data: moodData,
-                options: { responsive: true }
-            });
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-            var tagCtx = document.getElementById('tagChart').getContext('2d');
-            new Chart(tagCtx, {
-                type: 'bar',
-                data: tagData,
-                options: { responsive: true }
-            });
-        }
-    </script>
-
-    <script src="js/richTextEditor.js"></script>
-=======
->>>>>>> 6e97bb3dd6852c7a95fce11723c7c93867275eb6
-
+<!-- Your custom JS -->
+<script src="js/analyticsCharts.js"></script>
+<script src="js/richTextEditor.js"></script>
 </body>
-
 </html>

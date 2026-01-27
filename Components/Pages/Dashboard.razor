@@ -12,41 +12,44 @@ Navigation.NavigateTo("/login", true);
 return;
 }
 
-<div class="dashboard-container" style="background:@Theme.BackgroundColor; color:@Theme.TextColor; min-height:100vh;">
+<div class="dashboard-container" style="background:@Theme.BackgroundColor; color:@Theme.TextColor;">
+
     <!-- Greeting -->
-    <div class="greeting">
+    <div class="greeting-card" style="background:@Theme.CardBackground;">
         <h2>Good morning, @userName!</h2>
-        <p>Today is @today.ToString("dddd, MMMM dd, yyyy")</p>
+        <p class="today-date" style="color:@Theme.SecondaryTextColor;">Today is @today.ToString("dddd, MMMM dd, yyyy")</p>
         <h4>How are you feeling today?</h4>
     </div>
 
     <!-- Top Stats Cards -->
-    <div class="top-cards">
-        <div class="card">
-            <h3>Current Streak</h3>
-            <p>@currentStreak day(s)</p>
+    <div class="stats-cards">
+        <div class="stat-card" style="background:@Theme.CardBackground;">
+            <h3>@currentStreak</h3>
+            <p style="color:@Theme.SecondaryTextColor;">Current Streak (days)</p>
         </div>
-        <div class="card @(todaysEntry != null ? "highlight" : "")">
-            <h3>Today's Mood</h3>
-            <p>@(todaysEntry?.PrimaryMood ?? "No entry today")</p>
+        <div class="stat-card" style="background:@Theme.CardBackground;">
+            <h3>@longestStreak</h3>
+            <p style="color:@Theme.SecondaryTextColor;">Longest Streak</p>
         </div>
-        <div class="card">
-            <h3>Recent Entries</h3>
-            <p>@recentEntries.Count entry(s)</p>
+        <div class="stat-card" style="background:@Theme.CardBackground;">
+            <h3>@recentEntries.Count</h3>
+            <p style="color:@Theme.SecondaryTextColor;">Recent Entries</p>
         </div>
     </div>
 
     <!-- Main Actions -->
     <div class="main-actions">
-        <div class="action-card" @onclick="GoToWriteJournal">
-            <h3>Start Writing</h3>
-            <p>Capture your thoughts and feelings today</p>
+        <div class="action-card journal-card" style="background:@Theme.CardBackground;" @onclick="GoToWriteJournal">
+            <h3>Write Today's Entry</h3>
+            <p style="color:@Theme.SecondaryTextColor;">Capture your thoughts and feelings today.</p>
+            <button style="background:@Theme.ButtonBackground; color:@Theme.ButtonText;" class="btn-action">Start Writing</button>
         </div>
+
         <div class="side-actions">
-            <div class="action-card small" @onclick="GoToCalendar">
+            <div class="action-card small" style="background:@Theme.ButtonBackground; color:@Theme.ButtonText;" @onclick="GoToCalendar">
                 <h3>Calendar</h3>
             </div>
-            <div class="action-card small" @onclick="GoToAnalytics">
+            <div class="action-card small" style="background:@Theme.ButtonBackground; color:@Theme.ButtonText;" @onclick="GoToAnalytics">
                 <h3>Analytics</h3>
             </div>
         </div>
@@ -60,23 +63,21 @@ return;
         <div class="entries-grid">
             @foreach (var entry in recentEntries)
             {
-            <div class="entry-card">
+            <div class="entry-card" style="background:@Theme.CardBackground;">
                 <div class="entry-header">
                     <b>@(!string.IsNullOrEmpty(entry.Category) ? entry.Category : "Untitled")</b>
-                    <span class="word-count">@((entry.Content?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length) ?? 0) words</span>
+                    <span class="word-count" style="color:@Theme.SecondaryTextColor;">@((entry.Content?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length) ?? 0) words</span>
                 </div>
-                <div class="entry-date">@entry.CreatedAt.ToString("dddd, MMMM dd, yyyy")</div>
-                <div class="entry-content">
-                    @(!string.IsNullOrEmpty(entry.Content) && entry.Content.Length > 150
+                <div class="entry-date" style="color:@Theme.SecondaryTextColor;">@entry.CreatedAt.ToString("dddd, MMMM dd, yyyy")</div>
+                <div class="entry-content">@(!string.IsNullOrEmpty(entry.Content) && entry.Content.Length > 150
                     ? entry.Content.Substring(0, 150) + "..."
-                    : entry.Content ?? "")
-                </div>
+                    : entry.Content ?? "")</div>
                 @if (!string.IsNullOrWhiteSpace(entry.Tags))
                 {
                 <div class="entry-tags">
                     @foreach (var tag in entry.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries))
                     {
-                    <span class="tag">@tag.Trim()</span>
+                    <span class="tag" style="background:@Theme.PillBackground; color:@Theme.TextColor;">#@tag.Trim()</span>
                     }
                 </div>
                 }
@@ -86,10 +87,32 @@ return;
         }
         else
         {
-        <p>No recent entries.</p>
+        <p style="color:@Theme.SecondaryTextColor;">No recent entries.</p>
         }
     </div>
 </div>
+
+<style>
+    .dashboard-container { min-height:100vh; padding:2rem; font-family:'Inter', sans-serif; }
+    .greeting-card { padding:2rem; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.08); margin-bottom:2rem; }
+    .stats-cards { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:2rem; }
+    .stat-card { flex:1; min-width:150px; padding:1rem; border-radius:12px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.06); }
+    .main-actions { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:2rem; }
+    .action-card { flex:2; padding:1.5rem; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.08); cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; transition:0.2s; }
+    .action-card:hover { transform:translateY(-3px); box-shadow:0 10px 24px rgba(0,0,0,0.12); }
+    .btn-action { padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; font-weight:bold; margin-top:auto; }
+    .side-actions { display:flex; flex-direction:column; gap:1rem; flex:1; }
+    .side-actions .action-card.small { flex:1; text-align:center; }
+    .recent-entries h3 { margin-bottom:1rem; }
+    .entries-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:1rem; }
+    .entry-card { padding:1rem; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.06); transition:0.2s; }
+    .entry-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.12); }
+    .entry-header { display:flex; justify-content:space-between; margin-bottom:0.5rem; }
+    .entry-content { font-size:0.95rem; line-height:1.5; margin-bottom:0.5rem; }
+    .entry-tags { display:flex; flex-wrap:wrap; gap:0.4rem; }
+    .tag { padding:0.25rem 0.6rem; border-radius:12px; font-size:0.75rem; }
+    .today-date { font-size:0.95rem; margin-bottom:1rem; }
+</style>
 
 @code {
 private string userEmail = "";
@@ -97,6 +120,7 @@ private string userName = "";
 private DateTime today = DateTime.Today;
 
 private int currentStreak = 0;
+private int longestStreak = 0;
 private JournalEntry? todaysEntry;
 private List<JournalEntry> recentEntries = new();
 
@@ -110,32 +134,43 @@ if (user == null) return;
 userEmail = user.Email;
 userName = string.IsNullOrWhiteSpace(user.FullName) ? "User" : user.FullName;
 
-// Load all entries
-var allEntries = await Db.GetEntriesAsync(userEmail);
-allEntries = allEntries.OrderByDescending(e => e.CreatedAtTicks).ToList();
+var allEntries = (await Db.GetEntriesAsync(userEmail))
+.OrderByDescending(e => e.CreatedAtTicks)
+.ToList();
 
 todaysEntry = allEntries.FirstOrDefault(e => e.CreatedAt.Date == today);
-
 recentEntries = allEntries.Take(3).ToList();
 
-currentStreak = CalculateStreak(allEntries);
+currentStreak = CalculateStreak(allEntries, out longestStreak);
 }
 
-private int CalculateStreak(List<JournalEntry> entries)
+private int CalculateStreak(List<JournalEntry> entries, out int longest)
 {
-int streak = 0;
+var dates = entries.Select(e => e.CreatedAt.Date).OrderBy(d => d).ToList();
+int streak = 0, maxStreak = 0, temp = 1;
+
+for (int i = 1; i < dates.Count; i++)
+{
+if ((dates[i] - dates[i - 1]).Days == 1)
+temp++;
+else
+{
+if (temp > maxStreak) maxStreak = temp;
+temp = 1;
+}
+}
+if (temp > maxStreak) maxStreak = temp;
+
+// Current streak
+streak = 0;
 DateTime day = today;
-var datesSet = entries.Select(e => e.CreatedAt.Date).ToHashSet();
+var dateSet = entries.Select(e => e.CreatedAt.Date).ToHashSet();
+while (dateSet.Contains(day)) { streak++; day = day.AddDays(-1); }
 
-while (datesSet.Contains(day))
-{
-streak++;
-day = day.AddDays(-1);
-}
+longest = maxStreak;
 return streak;
 }
 
-// Navigation helpers
 private void GoToWriteJournal() => Navigation.NavigateTo("/write-journal");
 private void GoToCalendar() => Navigation.NavigateTo("/calendar");
 private void GoToAnalytics() => Navigation.NavigateTo("/analytics");

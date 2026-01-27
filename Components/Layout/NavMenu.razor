@@ -1,9 +1,10 @@
 ﻿@inject NavigationManager Navigation
 @inject AuthStateService Auth
 
-<div class="nav-scrollable" style="background-color:#fff8db; height:100vh; padding:15px; box-shadow: 2px 0 5px rgba(0,0,0,0.1);">
-    <nav class="nav flex-column">
+<div class="nav-scrollable" style="background-color:#fff8db; height:100vh; display:flex; flex-direction:column; justify-content:space-between; padding:25px 15px 15px 15px; box-shadow: 2px 0 5px rgba(0,0,0,0.1);">
 
+    <!-- Main Links (closer to top) -->
+    <div style="display:flex; flex-direction:column; gap:15px;">
         <NavLink href="/dashboard" class="nav-link custom-nav-link" Match="NavLinkMatch.All">
             Dashboard
         </NavLink>
@@ -19,20 +20,21 @@
         <NavLink href="/calendar" class="nav-link custom-nav-link">
             Calendar
         </NavLink>
+
         <NavLink href="/analytics" class="nav-link custom-nav-link">
             Analytics
         </NavLink>
+
         <NavLink href="/settings" class="nav-link custom-nav-link">
             Settings
         </NavLink>
+    </div>
 
-        
+    <!-- Logout pinned at bottom -->
+    <a href="#" @onclick="Logout" class="nav-link custom-nav-link" style="margin-top:20px;">
+        Logout
+    </a>
 
-        <a href="#" @onclick="Logout" class="nav-link custom-nav-link" style="margin-top:20px;">
-            Logout
-        </a>
-
-    </nav>
 </div>
 
 @code {
