@@ -66,10 +66,37 @@
             <!-- Primary Mood -->
             <div class="meta-card">
                 <label><b>Primary Mood *</b></label>
+                
+                <!-- Positive Moods -->
+                <div class="mood-category-label">Positive</div>
                 <div class="pill-group">
-                    @foreach (var mood in PrimaryMoods)
+                    @foreach (var mood in PositiveMoods)
                     {
-                        <button class="pill @(PrimaryMood == mood ? "active" : "")"
+                        <button class="pill mood-positive @(PrimaryMood == mood ? "active" : "")"
+                                @onclick="() => PrimaryMood = mood">
+                            @mood
+                        </button>
+                    }
+                </div>
+
+                <!-- Neutral Moods -->
+                <div class="mood-category-label">Neutral</div>
+                <div class="pill-group">
+                    @foreach (var mood in NeutralMoods)
+                    {
+                        <button class="pill mood-neutral @(PrimaryMood == mood ? "active" : "")"
+                                @onclick="() => PrimaryMood = mood">
+                            @mood
+                        </button>
+                    }
+                </div>
+
+                <!-- Negative Moods -->
+                <div class="mood-category-label">Negative</div>
+                <div class="pill-group">
+                    @foreach (var mood in NegativeMoods)
+                    {
+                        <button class="pill mood-negative @(PrimaryMood == mood ? "active" : "")"
                                 @onclick="() => PrimaryMood = mood">
                             @mood
                         </button>
@@ -80,10 +107,37 @@
             <!-- Secondary Moods -->
             <div class="meta-card">
                 <label><b>Secondary Moods (max 2)</b></label>
+                
+                <!-- Positive Secondary -->
+                <div class="mood-category-label">Positive</div>
                 <div class="pill-group">
-                    @foreach (var mood in SecondaryMoods)
+                    @foreach (var mood in PositiveMoods)
                     {
-                        <button class="pill @(SelectedSecondary.Contains(mood) ? "active" : "")"
+                        <button class="pill mood-positive @(SelectedSecondary.Contains(mood) ? "active" : "")"
+                                @onclick="() => ToggleSecondaryMood(mood)">
+                            @mood
+                        </button>
+                    }
+                </div>
+
+                <!-- Neutral Secondary -->
+                <div class="mood-category-label">Neutral</div>
+                <div class="pill-group">
+                    @foreach (var mood in NeutralMoods)
+                    {
+                        <button class="pill mood-neutral @(SelectedSecondary.Contains(mood) ? "active" : "")"
+                                @onclick="() => ToggleSecondaryMood(mood)">
+                            @mood
+                        </button>
+                    }
+                </div>
+
+                <!-- Negative Secondary -->
+                <div class="mood-category-label">Negative</div>
+                <div class="pill-group">
+                    @foreach (var mood in NegativeMoods)
+                    {
+                        <button class="pill mood-negative @(SelectedSecondary.Contains(mood) ? "active" : "")"
                                 @onclick="() => ToggleSecondaryMood(mood)">
                             @mood
                         </button>
@@ -107,26 +161,38 @@
 
             <!-- Tags -->
             <div class="meta-card">
-                <label><b>Tags (max 7)</b></label>
-                <div class="tags-wrap">
-                    @foreach (var tag in UserTags)
+                <label><b>Tags (Optional - max 7)</b></label>
+                
+                <!-- Pre-built Tags -->
+                <div class="tags-section-label">Pre-built Tags</div>
+                <div class="tags-wrap tags-prebuilt">
+                    @foreach (var tag in PrebuiltTags)
                     {
-                        <span class="tag @(SelectedTags.Contains(tag) ? "selected" : "")">
-                            <span style="cursor:pointer" @onclick="() => ToggleTag(tag)">
-                                @tag
-                            </span>
-                            @if (SelectedTags.Contains(tag))
-                            {
-                                <button class="remove-tag"
-                                        type="button"
-                                        @onclick="@(() => RemoveTag(tag))"
-                                        @onclick:stopPropagation>
-                                    ×
-                                </button>
-                            }
+                        <span class="tag @(SelectedTags.Contains(tag) ? "selected" : "")" @onclick="() => ToggleTag(tag)">
+                            <span class="tag-text">@tag</span>
                         </span>
                     }
                 </div>
+
+                @if (CustomUserTags.Any())
+                {
+                    <!-- Custom Tags -->
+                    <div class="tags-section-label">Your Custom Tags</div>
+                    <div class="tags-wrap tags-custom">
+                        @foreach (var tag in CustomUserTags)
+                        {
+                            <span class="tag @(SelectedTags.Contains(tag) ? "selected" : "")" @onclick="() => ToggleTag(tag)">
+                                <span class="tag-text">@tag</span>
+                                <button class="remove-tag"
+                                        type="button"
+                                        @onclick="@(() => DeleteCustomTag(tag))"
+                                        @onclick:stopPropagation="true">
+                                    ×
+                                </button>
+                            </span>
+                        }
+                    </div>
+                }
 
                 @if (SelectedTags.Count < 7)
                 {
@@ -159,21 +225,37 @@ h2 { margin-bottom:20px; color:@Theme.TextColor; }
 .rich-text-editor:empty:before { content: attr(data-placeholder); color:#aaa; }
 .save-btn { margin-top:10px; padding:8px 16px; border-radius:10px; border:none; font-weight:bold; background:@Theme.ButtonBackground; color:@Theme.ButtonText; cursor:pointer; }
 .save-btn:hover { opacity:0.85; }
-.meta-section { flex:1 1 300px; display:flex; flex-direction:column; gap:15px; }
+.meta-section { flex:1 1 300px; display:flex; flex-direction:column; gap:15px; max-height:calc(100vh - 100px); overflow-y:auto; }
 .meta-card { background:@Theme.CardBackground; padding:15px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.06); }
-.pill-group { display:flex; flex-wrap:wrap; gap:6px; margin-top:5px; }
+.pill-group { display:flex; flex-wrap:wrap; gap:6px; margin-top:5px; margin-bottom:10px; }
 .pill { padding:5px 12px; border-radius:12px; border:1px solid #ccc; background:#f2f2f2; cursor:pointer; font-size:0.85em; }
+.pill:hover { background:#e5e5e5; }
 .pill.active { background:@Theme.PillActiveBackground; color:@Theme.TextColor; font-weight:bold; }
-.tags-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-top:5px; }
-.tag { padding:4px 10px; border-radius:12px; border:1px solid #ccc; background:#eee; cursor:pointer; font-size:0.8em; position:relative; }
+
+/* Mood Category Styling */
+.mood-category-label { margin-top:8px; font-size:0.8em; color:#666; font-weight:500; }
+.mood-positive { border-color:#90EE90; }
+.mood-positive.active { background:#90EE90 !important; color:#1a5f1a !important; }
+.mood-neutral { border-color:#B0C4DE; }
+.mood-neutral.active { background:#B0C4DE !important; color:#1a3a5f !important; }
+.mood-negative { border-color:#FFB6B6; }
+.mood-negative.active { background:#FFB6B6 !important; color:#5f1a1a !important; }
+
+.tags-section-label { margin-top:10px; margin-bottom:5px; font-size:0.75em; color:#888; font-weight:600; text-transform:uppercase; }
+.tags-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-top:5px; max-height:120px; overflow-y:auto; padding:2px; }
+.tags-prebuilt { max-height:100px; }
+.tags-custom { max-height:80px; }
+.tag { padding:4px 10px; border-radius:12px; border:1px solid #ccc; background:#eee; cursor:pointer; font-size:0.8em; position:relative; display:inline-flex; align-items:center; gap:4px; }
+.tag:hover { background:#e0e0e0; }
 .tag.selected { background:@Theme.PillActiveBackground; color:@Theme.TextColor; font-weight:bold; }
-.remove-tag { position:absolute; top:-6px; right:-6px; border:none; background:#D45D5D; color:white; border-radius:50%; width:18px; height:18px; cursor:pointer; font-size:0.75em; line-height:16px; }
+.tag-text { pointer-events:none; }
+.remove-tag { position:absolute; top:-6px; right:-6px; border:none; background:#D45D5D; color:white; border-radius:50%; width:18px; height:18px; cursor:pointer; font-size:0.75em; line-height:16px; display:flex; align-items:center; justify-content:center; padding:0; }
+.remove-tag:hover { background:#c04545; }
 .tag-input { margin-top:8px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; width:100%; outline:none; }
 </style>
 
 @code {
     [Parameter] public int? EntryId { get; set; }
-    private bool IsEditPage => Navigation.Uri.EndsWith("/edit");
 
     private ElementReference editorRef;
     private string Content = "";
@@ -182,51 +264,63 @@ h2 { margin-bottom:20px; color:@Theme.TextColor; }
 
     private JournalEntry? CurrentEntry;
 
-    private List<string> PrimaryMoods = new() { "Calm","Happy","Energetic","Content","Sad","Anxious","Irritated","Overwhelmed","Low Energy","Confused","Numb" };
+    // New Mood Categories
+    private List<string> PositiveMoods = new() { "Happy", "Excited", "Relaxed", "Grateful", "Confident" };
+    private List<string> NeutralMoods = new() { "Calm", "Thoughtful", "Curious", "Nostalgic", "Bored" };
+    private List<string> NegativeMoods = new() { "Sad", "Angry", "Stressed", "Lonely", "Anxious" };
     private string PrimaryMood = "";
 
-    private List<string> SecondaryMoods = new() { "Motivated","Hopeful","Grateful","Restless","Tired","Lonely","Self-Critical","Guilty","Frustrated","Detached" };
+    // Secondary Moods
     private List<string> SelectedSecondary = new();
 
+    // Keep existing categories
     private List<string> Categories = new() { "Personal","Academic","Work","Health","Relationships","Self-Growth" };
     private string Category = "";
 
+    // Pre-built Tags
+    private List<string> PrebuiltTags = new() {
+        "Work", "Career", "Studies", "Family", "Friends", "Relationships",
+        "Health", "Fitness", "Personal Growth", "Self-care", "Hobbies", "Travel",
+        "Nature", "Finance", "Spirituality", "Birthday", "Holiday", "Vacation",
+        "Celebration", "Exercise", "Reading", "Writing", "Cooking", "Meditation",
+        "Yoga", "Music", "Shopping", "Parenting", "Projects", "Planning", "Reflection"
+    };
+
     private List<string> SelectedTags = new();
-    private List<string> UserTags = new();
+    private List<string> CustomUserTags = new();
     private string NewTagInput = "";
 
     protected override async Task OnInitializedAsync()
     {
         if (Auth.CurrentUser == null) return;
 
-        UserTags = await Db.GetUserTagsAsync(Auth.CurrentUser.Email);
+        CustomUserTags = await Db.GetUserTagsAsync(Auth.CurrentUser.Email);
 
-        if (!IsEditPage) return;
-
-        var allEntries = await Db.GetEntriesAsync(Auth.CurrentUser.Email);
-
+        // Check if we have an EntryId parameter (editing mode)
         if (EntryId.HasValue)
-            CurrentEntry = allEntries.FirstOrDefault(e => e.Id == EntryId.Value);
-        else
-            CurrentEntry = allEntries.FirstOrDefault(e => e.CreatedAt.Date == DateTime.Today);
-
-        if (CurrentEntry != null)
         {
-            PrimaryMood = CurrentEntry.PrimaryMood;
-            SelectedSecondary = CurrentEntry.SecondaryMoods?.Split(',').ToList() ?? new();
-            Category = CurrentEntry.Category;
-            SelectedTags = CurrentEntry.Tags?.Split(',').ToList() ?? new();
-            Content = CurrentEntry.Content;
+            CurrentEntry = await Db.GetEntryByIdAsync(EntryId.Value);
 
-            await Task.Delay(50);
-            await SetEditorContent(Content);
+            if (CurrentEntry != null)
+            {
+                PrimaryMood = CurrentEntry.PrimaryMood;
+                SelectedSecondary = CurrentEntry.SecondaryMoods?.Split(',').Where(s => !string.IsNullOrWhiteSpace(s)).ToList() ?? new();
+                Category = CurrentEntry.Category;
+                SelectedTags = CurrentEntry.Tags?.Split(',').Where(t => !string.IsNullOrWhiteSpace(t)).ToList() ?? new();
+                Content = CurrentEntry.Content;
+
+                await Task.Delay(50);
+                await SetEditorContent(Content);
+            }
         }
     }
 
     private void ToggleSecondaryMood(string mood)
     {
-        if (SelectedSecondary.Contains(mood)) SelectedSecondary.Remove(mood);
-        else if (SelectedSecondary.Count < 2) SelectedSecondary.Add(mood);
+        if (SelectedSecondary.Contains(mood)) 
+            SelectedSecondary.Remove(mood);
+        else if (SelectedSecondary.Count < 2) 
+            SelectedSecondary.Add(mood);
     }
 
     private void ToggleTag(string tag)
@@ -235,9 +329,23 @@ h2 { margin-bottom:20px; color:@Theme.TextColor; }
         else if (SelectedTags.Count < 7) SelectedTags.Add(tag);
     }
 
-    private void RemoveTag(string tag)
+    private async Task DeleteCustomTag(string tag)
     {
-        if (SelectedTags.Contains(tag)) SelectedTags.Remove(tag);
+        // Remove from selected tags if selected
+        if (SelectedTags.Contains(tag)) 
+            SelectedTags.Remove(tag);
+    
+        // Remove from custom tags list
+        if (CustomUserTags.Contains(tag))
+            CustomUserTags.Remove(tag);
+    
+        // Delete from database - need to get the UserCustomTag object first
+        var allUserTags = await Db.GetUserCustomTagsAsync(Auth.CurrentUser.Email);
+        var tagToDelete = allUserTags.FirstOrDefault(t => t.Tag == tag);
+        if (tagToDelete != null)
+        {
+            await Db.DeleteUserCustomTagAsync(tagToDelete);
+        }
     }
 
     private async Task HandleTagInput(KeyboardEventArgs e)
@@ -253,13 +361,25 @@ h2 { margin-bottom:20px; color:@Theme.TextColor; }
             return;
         }
 
-        if (!UserTags.Contains(tag))
+        // Check if tag already exists in prebuilt or custom tags
+        if (PrebuiltTags.Contains(tag))
         {
+            // Just toggle it if it's a prebuilt tag
+            ToggleTag(tag);
+        }
+        else if (!CustomUserTags.Contains(tag))
+        {
+            // Add new custom tag to database
             await Db.AddUserTagAsync(Auth.CurrentUser.Email, tag);
-            UserTags.Add(tag);
+            CustomUserTags.Add(tag);
+            ToggleTag(tag);
+        }
+        else
+        {
+            // Custom tag already exists, just toggle it
+            ToggleTag(tag);
         }
 
-        ToggleTag(tag);
         NewTagInput = "";
     }
 

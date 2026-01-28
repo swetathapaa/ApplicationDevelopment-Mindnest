@@ -48,7 +48,7 @@
 
                         <div style="
                             height:60px; display:flex; align-items:center; justify-content:center;
-                            border-radius:10px; cursor:pointer;
+                            border-radius:10px;
                             position:relative;
                             background:@(
                                 isToday ? Theme.PillActiveBackground :
@@ -59,9 +59,8 @@
                             box-shadow:0 4px 12px rgba(0,0,0,0.05);
                             transition:transform 0.2s;
                         "
-                             @onclick="() => OnDateClick(date)"
-                             @onmouseover="() => HoveredPreview = hasEntry ? GetPreview(date) : null"
-                             @onmouseout="() => HoveredPreview = null"
+                             @onmouseover="() => SetHoveredDate(date, hasEntry)"
+                             @onmouseout="() => ClearHoveredDate()"
                         >
 
                             <span style="font-weight:bold; color:@Theme.TextColor;">@date.Day</span>
@@ -74,14 +73,17 @@
                                 "></span>
                             }
 
-                            @if (HoveredPreview != null)
+                            @if (HoveredDate.HasValue && HoveredDate.Value.Date == date.Date && !string.IsNullOrEmpty(HoveredPreview))
                             {
                                 <div style="
-                                    position:absolute; top:-40px; left:50%; transform:translateX(-50%);
+                                    position:absolute; top:-50px; left:50%; transform:translateX(-50%);
                                     background:@Theme.CardBackground; color:@Theme.TextColor;
-                                    padding:6px 12px; border-radius:6px; box-shadow:0 2px 10px rgba(0,0,0,0.1);
-                                    white-space:nowrap; z-index:50;
+                                    padding:8px 12px; border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,0.2);
+                                    white-space:nowrap; z-index:100;
                                     font-size:0.75rem;
+                                    border:1px solid #ddd;
+                                    max-width:250px;
+                                    pointer-events:none;
                                 ">
                                     @HoveredPreview
                                 </div>
@@ -119,8 +121,7 @@
             <div style="background:@Theme.CardBackground; padding:20px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08);">
                 <b>Tip</b>
                 <p style="margin-top:5px; color:@Theme.SecondaryTextColor;">
-                    • Hover on a date to preview the journal<br />
-                    • Click a date to go to the journal page
+                    • Hover on a date with a dot to preview the journal
                 </p>
             </div>
 
@@ -141,6 +142,7 @@
     int MissedDays;
     int CompletionRate;
 
+    private DateTime? HoveredDate = null;
     private string? HoveredPreview = null;
 
     protected override async Task OnInitializedAsync()
@@ -176,17 +178,29 @@
     {
         TotalDays = DateTime.DaysInMonth(CurrentMonth.Year, CurrentMonth.Month);
 
-        WrittenDays = EntryMap.Keys.Count(d => d.Month == CurrentMonth.Month);
-        MissedDays = Enumerable.Range(1, Today.Day - 1)
-            .Where(d => new DateTime(CurrentMonth.Year, CurrentMonth.Month, d) < Today)
+        WrittenDays = EntryMap.Keys.Count(d => d.Month == CurrentMonth.Month && d.Year == CurrentMonth.Year);
+        
+        MissedDays = Enumerable.Range(1, Math.Min(Today.Day, TotalDays))
+            .Where(d => CurrentMonth.Year == Today.Year && CurrentMonth.Month == Today.Month && d < Today.Day)
             .Count(d => !EntryMap.ContainsKey(new DateTime(CurrentMonth.Year, CurrentMonth.Month, d)));
 
-        CompletionRate = Today.Day == 1 ? 0 : (int)((double)WrittenDays / (Today.Day - 1) * 100);
+        var eligibleDays = CurrentMonth.Year == Today.Year && CurrentMonth.Month == Today.Month 
+            ? Today.Day - 1 
+            : TotalDays;
+        
+        CompletionRate = eligibleDays == 0 ? 0 : (int)((double)WrittenDays / eligibleDays * 100);
     }
 
-    void OnDateClick(DateTime date)
+    void SetHoveredDate(DateTime date, bool hasEntry)
     {
-        Navigation.NavigateTo("/write-journal");
+        HoveredDate = date;
+        HoveredPreview = hasEntry ? GetPreview(date) : null;
+    }
+
+    void ClearHoveredDate()
+    {
+        HoveredDate = null;
+        HoveredPreview = null;
     }
 
     string GetPreview(DateTime date)
@@ -194,7 +208,9 @@
         if (!EntryMap.ContainsKey(date.Date)) return string.Empty;
 
         var text = EntryMap[date.Date].Content;
-        return text.Length > 80 ? text.Substring(0, 80) + "..." : text;
+        // Strip HTML tags for preview
+        var plainText = System.Text.RegularExpressions.Regex.Replace(text ?? "", "<.*?>", "");
+        return plainText.Length > 60 ? plainText.Substring(0, 60) + "..." : plainText;
     }
 
     void PrevMonth()

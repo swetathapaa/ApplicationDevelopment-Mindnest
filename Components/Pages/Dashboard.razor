@@ -16,22 +16,24 @@ return;
 
     <!-- Greeting -->
     <div class="greeting-card" style="background:@Theme.CardBackground;">
-        <h2>Good morning, @userName!</h2>
-        <p class="today-date" style="color:@Theme.SecondaryTextColor;">Today is @today.ToString("dddd, MMMM dd, yyyy")</p>
-        <h4>How are you feeling today?</h4>
+        <h2>Good morning, @userName! 👋</h2>
+        <p class="today-date" style="color:@Theme.SecondaryTextColor;">@today.ToString("dddd, MMMM dd, yyyy")</p>
     </div>
 
     <!-- Top Stats Cards -->
     <div class="stats-cards">
         <div class="stat-card" style="background:@Theme.CardBackground;">
+            <div class="stat-icon">🔥</div>
             <h3>@currentStreak</h3>
-            <p style="color:@Theme.SecondaryTextColor;">Current Streak (days)</p>
+            <p style="color:@Theme.SecondaryTextColor;">Day Streak</p>
         </div>
         <div class="stat-card" style="background:@Theme.CardBackground;">
+            <div class="stat-icon">🏆</div>
             <h3>@longestStreak</h3>
             <p style="color:@Theme.SecondaryTextColor;">Longest Streak</p>
         </div>
         <div class="stat-card" style="background:@Theme.CardBackground;">
+            <div class="stat-icon">📝</div>
             <h3>@recentEntries.Count</h3>
             <p style="color:@Theme.SecondaryTextColor;">Recent Entries</p>
         </div>
@@ -40,42 +42,64 @@ return;
     <!-- Main Actions -->
     <div class="main-actions">
         <div class="action-card journal-card" style="background:@Theme.CardBackground;" @onclick="GoToWriteJournal">
-            <h3>Write Today's Entry</h3>
-            <p style="color:@Theme.SecondaryTextColor;">Capture your thoughts and feelings today.</p>
-            <button style="background:@Theme.ButtonBackground; color:@Theme.ButtonText;" class="btn-action">Start Writing</button>
+            <div class="action-content">
+                <span class="action-icon">✍️</span>
+                <div>
+                    <h3>Write Today's Entry</h3>
+                    <p style="color:@Theme.SecondaryTextColor;">Capture your thoughts and feelings</p>
+                </div>
+            </div>
+            <button style="background:@Theme.ButtonBackground; color:@Theme.ButtonText;" class="btn-action">Start Writing →</button>
         </div>
 
         <div class="side-actions">
-            <div class="action-card small" style="background:@Theme.ButtonBackground; color:@Theme.ButtonText;" @onclick="GoToCalendar">
-                <h3>Calendar</h3>
+            <div class="action-card small" style="background:@Theme.CardBackground;" @onclick="GoToCalendar">
+                <span class="action-icon-small">📅</span>
+                <h4>Calendar</h4>
             </div>
-            <div class="action-card small" style="background:@Theme.ButtonBackground; color:@Theme.ButtonText;" @onclick="GoToAnalytics">
-                <h3>Analytics</h3>
+            <div class="action-card small" style="background:@Theme.CardBackground;" @onclick="GoToAnalytics">
+                <span class="action-icon-small">📊</span>
+                <h4>Analytics</h4>
             </div>
         </div>
     </div>
 
     <!-- Recent Entries -->
     <div class="recent-entries">
-        <h3>Recent Entries</h3>
+        <div class="section-header">
+            <h3>Recent Entries</h3>
+            <a href="/journal-history" class="view-all" style="color:@Theme.ButtonBackground;">View All →</a>
+        </div>
         @if (recentEntries.Any())
         {
         <div class="entries-grid">
             @foreach (var entry in recentEntries)
             {
-            <div class="entry-card" style="background:@Theme.CardBackground;">
+            <div class="entry-card" style="background:@Theme.CardBackground;" @onclick="() => GoToEntry(entry.Id)">
                 <div class="entry-header">
-                    <b>@(!string.IsNullOrEmpty(entry.Category) ? entry.Category : "Untitled")</b>
-                    <span class="word-count" style="color:@Theme.SecondaryTextColor;">@((entry.Content?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length) ?? 0) words</span>
+                    <div class="entry-category" style="background:@Theme.PillActiveBackground; color:@Theme.TextColor;">
+                        @(!string.IsNullOrEmpty(entry.Category) ? entry.Category : "Untitled")
+                    </div>
+                    <span class="word-count" style="color:@Theme.SecondaryTextColor;">
+                                @((entry.Content?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length) ?? 0) words
+                            </span>
                 </div>
-                <div class="entry-date" style="color:@Theme.SecondaryTextColor;">@entry.CreatedAt.ToString("dddd, MMMM dd, yyyy")</div>
-                <div class="entry-content">@(!string.IsNullOrEmpty(entry.Content) && entry.Content.Length > 150
-                    ? entry.Content.Substring(0, 150) + "..."
-                    : entry.Content ?? "")</div>
+                <div class="entry-date" style="color:@Theme.SecondaryTextColor;">
+                    📆 @entry.CreatedAt.ToString("MMM dd, yyyy")
+                </div>
+                @if (!string.IsNullOrEmpty(entry.PrimaryMood))
+                {
+                <div class="entry-mood" style="color:@Theme.SecondaryTextColor;">
+                    @GetMoodEmoji(entry.PrimaryMood) @entry.PrimaryMood
+                </div>
+                }
+                <div class="entry-content" style="color:@Theme.TextColor;">
+                    @GetPlainTextPreview(entry.Content)
+                </div>
                 @if (!string.IsNullOrWhiteSpace(entry.Tags))
                 {
                 <div class="entry-tags">
-                    @foreach (var tag in entry.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    @foreach (var tag in entry.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Take(3))
                     {
                     <span class="tag" style="background:@Theme.PillBackground; color:@Theme.TextColor;">#@tag.Trim()</span>
                     }
@@ -87,31 +111,299 @@ return;
         }
         else
         {
-        <p style="color:@Theme.SecondaryTextColor;">No recent entries.</p>
+        <div class="empty-state" style="background:@Theme.CardBackground;">
+            <div class="empty-icon">📝</div>
+            <p style="color:@Theme.SecondaryTextColor;">No recent entries yet</p>
+            <button class="btn-empty" style="background:@Theme.ButtonBackground; color:@Theme.ButtonText;" @onclick="GoToWriteJournal">
+                Write Your First Entry
+            </button>
+        </div>
         }
     </div>
 </div>
 
 <style>
-    .dashboard-container { min-height:100vh; padding:2rem; font-family:'Inter', sans-serif; }
-    .greeting-card { padding:2rem; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.08); margin-bottom:2rem; }
-    .stats-cards { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:2rem; }
-    .stat-card { flex:1; min-width:150px; padding:1rem; border-radius:12px; text-align:center; box-shadow:0 4px 16px rgba(0,0,0,0.06); }
-    .main-actions { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:2rem; }
-    .action-card { flex:2; padding:1.5rem; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.08); cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; transition:0.2s; }
-    .action-card:hover { transform:translateY(-3px); box-shadow:0 10px 24px rgba(0,0,0,0.12); }
-    .btn-action { padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; font-weight:bold; margin-top:auto; }
-    .side-actions { display:flex; flex-direction:column; gap:1rem; flex:1; }
-    .side-actions .action-card.small { flex:1; text-align:center; }
-    .recent-entries h3 { margin-bottom:1rem; }
-    .entries-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:1rem; }
-    .entry-card { padding:1rem; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.06); transition:0.2s; }
-    .entry-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.12); }
-    .entry-header { display:flex; justify-content:space-between; margin-bottom:0.5rem; }
-    .entry-content { font-size:0.95rem; line-height:1.5; margin-bottom:0.5rem; }
-    .entry-tags { display:flex; flex-wrap:wrap; gap:0.4rem; }
-    .tag { padding:0.25rem 0.6rem; border-radius:12px; font-size:0.75rem; }
-    .today-date { font-size:0.95rem; margin-bottom:1rem; }
+    .dashboard-container {
+        min-height:100vh;
+        padding:1.5rem;
+        font-family:'Inter', sans-serif;
+        max-width:1400px;
+        margin:0 auto;
+    }
+
+    .greeting-card {
+        padding:1.2rem 1.5rem;
+        border-radius:14px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.06);
+        margin-bottom:1.2rem;
+    }
+
+    .greeting-card h2 {
+        font-size:1.5rem;
+        font-weight:600;
+        margin-bottom:0.3rem;
+    }
+
+    .today-date {
+        font-size:0.9rem;
+        margin:0;
+    }
+
+    .stats-cards {
+        display:grid;
+        grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+        gap:1rem;
+        margin-bottom:1.2rem;
+    }
+
+    .stat-card {
+        padding:1rem;
+        border-radius:12px;
+        text-align:center;
+        box-shadow:0 4px 12px rgba(0,0,0,0.06);
+        transition:all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform:translateY(-3px);
+        box-shadow:0 6px 18px rgba(0,0,0,0.1);
+    }
+
+    .stat-icon {
+        font-size:1.8rem;
+        margin-bottom:0.3rem;
+    }
+
+    .stat-card h3 {
+        font-size:1.8rem;
+        font-weight:700;
+        margin:0.3rem 0;
+    }
+
+    .stat-card p {
+        font-size:0.85rem;
+        margin:0;
+    }
+
+    .main-actions {
+        display:grid;
+        grid-template-columns:2fr 1fr;
+        gap:1rem;
+        margin-bottom:1.2rem;
+    }
+
+    @@media (max-width: 768px) {
+    .main-actions {
+        grid-template-columns:1fr;
+    }
+    }
+
+    .action-card {
+        padding:1.2rem;
+        border-radius:14px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.06);
+        cursor:pointer;
+        transition:all 0.3s ease;
+    }
+
+    .action-card:hover {
+        transform:translateY(-3px);
+        box-shadow:0 6px 18px rgba(0,0,0,0.1);
+    }
+
+    .action-content {
+        display:flex;
+        align-items:center;
+        gap:1rem;
+        margin-bottom:0.8rem;
+    }
+
+    .action-icon {
+        font-size:2.5rem;
+    }
+
+    .action-content h3 {
+        font-size:1.2rem;
+        margin:0 0 0.2rem 0;
+        font-weight:600;
+    }
+
+    .action-content p {
+        margin:0;
+        font-size:0.85rem;
+    }
+
+    .btn-action {
+        padding:0.6rem 1.2rem;
+        border-radius:10px;
+        border:none;
+        cursor:pointer;
+        font-weight:600;
+        font-size:0.9rem;
+        transition:all 0.3s ease;
+        width:100%;
+    }
+
+    .btn-action:hover {
+        opacity:0.9;
+        transform:translateX(3px);
+    }
+
+    .side-actions {
+        display:flex;
+        flex-direction:column;
+        gap:1rem;
+    }
+
+    .side-actions .action-card {
+        flex:1;
+        display:flex;
+        align-items:center;
+        gap:0.8rem;
+        padding:1rem;
+    }
+
+    .action-icon-small {
+        font-size:1.8rem;
+    }
+
+    .side-actions .action-card h4 {
+        font-size:1rem;
+        margin:0;
+        font-weight:600;
+    }
+
+    .recent-entries {
+        margin-top:1.2rem;
+    }
+
+    .section-header {
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:1rem;
+    }
+
+    .section-header h3 {
+        font-size:1.3rem;
+        font-weight:600;
+        margin:0;
+    }
+
+    .view-all {
+        text-decoration:none;
+        font-weight:600;
+        font-size:0.9rem;
+        transition:all 0.3s ease;
+    }
+
+    .view-all:hover {
+        transform:translateX(3px);
+    }
+
+    .entries-grid {
+        display:grid;
+        grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+        gap:1rem;
+    }
+
+    .entry-card {
+        padding:1rem;
+        border-radius:12px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.06);
+        transition:all 0.3s ease;
+        cursor:pointer;
+    }
+
+    .entry-card:hover {
+        transform:translateY(-3px);
+        box-shadow:0 6px 18px rgba(0,0,0,0.1);
+    }
+
+    .entry-header {
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:0.6rem;
+    }
+
+    .entry-category {
+        padding:0.3rem 0.8rem;
+        border-radius:12px;
+        font-size:0.75rem;
+        font-weight:600;
+    }
+
+    .word-count {
+        font-size:0.75rem;
+        font-weight:500;
+    }
+
+    .entry-date {
+        font-size:0.8rem;
+        margin-bottom:0.5rem;
+    }
+
+    .entry-mood {
+        font-size:0.8rem;
+        margin-bottom:0.5rem;
+        font-weight:500;
+    }
+
+    .entry-content {
+        font-size:0.85rem;
+        line-height:1.5;
+        margin-bottom:0.6rem;
+        display:-webkit-box;
+        -webkit-line-clamp:2;
+        -webkit-box-orient:vertical;
+        overflow:hidden;
+    }
+
+    .entry-tags {
+        display:flex;
+        flex-wrap:wrap;
+        gap:0.4rem;
+    }
+
+    .tag {
+        padding:0.25rem 0.6rem;
+        border-radius:10px;
+        font-size:0.7rem;
+        font-weight:500;
+    }
+
+    .empty-state {
+        text-align:center;
+        padding:2rem;
+        border-radius:14px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .empty-icon {
+        font-size:3rem;
+        margin-bottom:0.8rem;
+    }
+
+    .empty-state p {
+        margin-bottom:1rem;
+        font-size:0.9rem;
+    }
+
+    .btn-empty {
+        padding:0.6rem 1.2rem;
+        border-radius:10px;
+        border:none;
+        font-weight:600;
+        cursor:pointer;
+        transition:all 0.3s ease;
+        font-size:0.9rem;
+    }
+
+    .btn-empty:hover {
+        opacity:0.9;
+        transform:translateY(-2px);
+    }
 </style>
 
 @code {
@@ -161,7 +453,6 @@ temp = 1;
 }
 if (temp > maxStreak) maxStreak = temp;
 
-// Current streak
 streak = 0;
 DateTime day = today;
 var dateSet = entries.Select(e => e.CreatedAt.Date).ToHashSet();
@@ -171,7 +462,39 @@ longest = maxStreak;
 return streak;
 }
 
+private string GetMoodEmoji(string mood)
+{
+return mood.ToLower() switch
+{
+"happy" => "😊",
+"excited" => "🎉",
+"relaxed" => "😌",
+"grateful" => "🙏",
+"confident" => "💪",
+"calm" => "😊",
+"thoughtful" => "🤔",
+"curious" => "🧐",
+"nostalgic" => "🌅",
+"bored" => "😐",
+"sad" => "😢",
+"angry" => "😠",
+"stressed" => "😰",
+"lonely" => "😔",
+"anxious" => "😟",
+_ => "💭"
+};
+}
+
+private string GetPlainTextPreview(string? htmlContent)
+{
+if (string.IsNullOrEmpty(htmlContent)) return "";
+
+var plainText = System.Text.RegularExpressions.Regex.Replace(htmlContent, "<.*?>", "");
+return plainText.Length > 100 ? plainText.Substring(0, 100) + "..." : plainText;
+}
+
 private void GoToWriteJournal() => Navigation.NavigateTo("/write-journal");
 private void GoToCalendar() => Navigation.NavigateTo("/calendar");
 private void GoToAnalytics() => Navigation.NavigateTo("/analytics");
+private void GoToEntry(int entryId) => Navigation.NavigateTo($"/write-journal/edit/{entryId}");
 }

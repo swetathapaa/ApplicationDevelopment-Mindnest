@@ -19,16 +19,105 @@
         </div>
     </div>
 
-    <!-- Search & Filter -->
-    <div class="search-filter">
-        <input type="text" placeholder="Search journals..." @bind="SearchText" @bind:event="oninput" />
-        <select @bind="SelectedFilter">
-            <option value="">All Categories</option>
-            @foreach (var cat in categories ?? new List<string>())
-            {
-                <option value="@cat">@cat</option>
-            }
-        </select>
+    <!-- ENHANCED FILTERS SECTION -->
+    <div class="filters-section">
+        <!-- Search Bar (Full Width) -->
+        <div class="search-bar">
+            <input type="text" placeholder="Search by title or content..." @bind="SearchText" @bind:event="oninput" />
+        </div>
+
+        <!-- Filter Row -->
+        <div class="filters-row">
+            <!-- Date Range Filter -->
+            <div class="filter-group">
+                <label>From Date:</label>
+                <input type="date" @bind="StartDate" @bind:event="oninput" />
+            </div>
+
+            <div class="filter-group">
+                <label>To Date:</label>
+                <input type="date" @bind="EndDate" @bind:event="oninput" />
+            </div>
+
+            <!-- Category Filter -->
+            <div class="filter-group">
+                <label>Category:</label>
+                <select @bind="SelectedCategory">
+                    <option value="">All Categories</option>
+                    @foreach (var cat in categories ?? new List<string>())
+                    {
+                        <option value="@cat">@cat</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Mood Filter -->
+            <div class="filter-group">
+                <label>Mood:</label>
+                <select @bind="SelectedMood">
+                    <option value="">All Moods</option>
+                    @foreach (var mood in allMoods)
+                    {
+                        <option value="@mood">@mood</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Tag Filter -->
+            <div class="filter-group">
+                <label>Tag:</label>
+                <select @bind="SelectedTag">
+                    <option value="">All Tags</option>
+                    @foreach (var tag in allTags)
+                    {
+                        <option value="@tag">@tag</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="filter-group">
+                <label>&nbsp;</label>
+                <button class="btn btn-secondary" @onclick="ResetFilters">Reset All</button>
+            </div>
+        </div>
+
+        <!-- Active Filters Display -->
+        @if (HasActiveFilters())
+        {
+            <div class="active-filters">
+                <span class="filter-label">Active Filters:</span>
+                @if (!string.IsNullOrEmpty(SearchText))
+                {
+                    <span class="filter-pill">Search: @SearchText <button @onclick="() => ClearFilter(nameof(SearchText))">×</button></span>
+                }
+                @if (StartDate.HasValue)
+                {
+                    <span class="filter-pill">From: @StartDate.Value.ToString("MMM dd, yyyy") <button @onclick="() => ClearFilter(nameof(StartDate))">×</button></span>
+                }
+                @if (EndDate.HasValue)
+                {
+                    <span class="filter-pill">To: @EndDate.Value.ToString("MMM dd, yyyy") <button @onclick="() => ClearFilter(nameof(EndDate))">×</button></span>
+                }
+                @if (!string.IsNullOrEmpty(SelectedCategory))
+                {
+                    <span class="filter-pill">Category: @SelectedCategory <button @onclick="() => ClearFilter(nameof(SelectedCategory))">×</button></span>
+                }
+                @if (!string.IsNullOrEmpty(SelectedMood))
+                {
+                    <span class="filter-pill">Mood: @SelectedMood <button @onclick="() => ClearFilter(nameof(SelectedMood))">×</button></span>
+                }
+                @if (!string.IsNullOrEmpty(SelectedTag))
+                {
+                    <span class="filter-pill">Tag: @SelectedTag <button @onclick="() => ClearFilter(nameof(SelectedTag))">×</button></span>
+                }
+            </div>
+        }
+
+        <!-- Results Summary -->
+        <div class="results-summary">
+            <span>Showing <strong>@filteredEntries.Count</strong> of <strong>@allEntries.Count</strong> entries</span>
+        </div>
     </div>
 
     <!-- Journal Cards -->
@@ -50,6 +139,21 @@
                             <span class="updated-label">(Updated)</span>
                         }
                     </div>
+
+                    <!-- Mood Display -->
+                    @if (!string.IsNullOrWhiteSpace(entry.PrimaryMood))
+                    {
+                        <div class="entry-moods">
+                            <span class="mood-badge primary">😊 @entry.PrimaryMood</span>
+                            @if (!string.IsNullOrWhiteSpace(entry.SecondaryMoods))
+                            {
+                                @foreach (var secondaryMood in entry.SecondaryMoods.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                {
+                                    <span class="mood-badge secondary">@secondaryMood.Trim()</span>
+                                }
+                            }
+                        </div>
+                    }
 
                     <div class="entry-content">
                         @((!string.IsNullOrEmpty(entry.Content) && entry.Content.Length > 250)
@@ -76,7 +180,7 @@
         }
         else
         {
-            <p class="no-journals">No journals found.</p>
+            <p class="no-journals">No journals found matching your filters.</p>
         }
     </div>
 
@@ -94,7 +198,7 @@
 <style>
     .journal-page {
         padding: 30px;
-        max-width: 950px;
+        max-width: 1200px;
         margin: auto;
         background: @Theme.BackgroundColor;
         color: @Theme.TextColor;
@@ -112,7 +216,7 @@
 
     .journal-header h1 {
         margin: 0;
-        color: #1F2D3A;
+        color: @Theme.TextColor;
     }
 
     .header-buttons {
@@ -120,39 +224,143 @@
         gap: 10px;
     }
 
-    /* Search & Filter */
-    .search-filter {
-        display: flex;
-        gap: 10px;
+    /* ENHANCED FILTERS SECTION */
+    .filters-section {
+        background: @Theme.CardBackground;
+        padding: 20px;
+        border-radius: 12px;
         margin-bottom: 25px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
     }
 
-    .search-filter input,
-    .search-filter select {
+    .search-bar {
+        margin-bottom: 15px;
+    }
+
+    .search-bar input {
+        width: 100%;
+        padding: 10px 15px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        background: @Theme.BackgroundColor;
+        color: @Theme.TextColor;
+        font-size: 0.95rem;
+        outline: none;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+    }
+
+    .search-bar input:focus {
+        border-color: @Theme.ButtonBackground;
+    }
+
+    .filters-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-group label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: @Theme.TextColor;
+    }
+
+    .filter-group input[type="date"],
+    .filter-group select {
         padding: 8px 12px;
         border-radius: 8px;
         border: 1px solid #ccc;
+        background: @Theme.BackgroundColor;
+        color: @Theme.TextColor;
+        font-size: 0.9rem;
         outline: none;
-        font-size: 0.95rem;
+        transition: border-color 0.2s;
     }
 
-    .search-filter select { background: white; }
+    .filter-group input[type="date"]:focus,
+    .filter-group select:focus {
+        border-color: @Theme.ButtonBackground;
+    }
+
+    /* Active Filters Display */
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #e0e0e0;
+        align-items: center;
+    }
+
+    .filter-label {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: @Theme.SecondaryTextColor;
+    }
+
+    .filter-pill {
+        background: @Theme.ButtonBackground;
+        color: @Theme.ButtonText;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .filter-pill button {
+        background: none;
+        border: none;
+        color: @Theme.ButtonText;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+        font-weight: bold;
+    }
+
+    .filter-pill button:hover {
+        opacity: 0.7;
+    }
+
+    /* Results Summary */
+    .results-summary {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #e0e0e0;
+        font-size: 0.9rem;
+        color: @Theme.SecondaryTextColor;
+    }
 
     /* Buttons */
     .btn {
-        padding: 6px 14px;
+        padding: 8px 16px;
         border-radius: 8px;
         border: none;
         cursor: pointer;
         font-weight: bold;
         transition: 0.2s;
+        font-size: 0.9rem;
     }
 
     .btn:hover { opacity: 0.85; }
 
     .btn-primary { background: @Theme.ButtonBackground; color: @Theme.ButtonText; }
+    .btn-secondary { background: #6c757d; color: white; }
     .btn-danger { background: #D45D5D; color: white; }
-    .btn-small { font-size: 0.85em; padding: 4px 10px; }
+    .btn-small { font-size: 0.85em; padding: 5px 12px; }
 
     /* Journal Cards */
     .journal-cards { display: flex; flex-direction: column; gap: 20px; }
@@ -184,7 +392,32 @@
     .entry-date { color: @Theme.SecondaryTextColor; font-size: 0.85em; margin-bottom: 10px; }
     .updated-label { font-size: 0.75em; }
 
-    .entry-content { margin-bottom: 10px; color: @Theme.TextColor; }
+    /* Mood Badges */
+    .entry-moods {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+
+    .mood-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: 600;
+    }
+
+    .mood-badge.primary {
+        background: #4FA9A1;
+        color: white;
+    }
+
+    .mood-badge.secondary {
+        background: #E6C85E;
+        color: #333;
+    }
+
+    .entry-content { margin-bottom: 10px; color: @Theme.TextColor; line-height: 1.6; }
 
     .entry-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
     .tag-pill {
@@ -197,7 +430,7 @@
 
     .entry-actions { display: flex; gap: 10px; }
 
-    .no-journals { text-align: center; color: @Theme.SecondaryTextColor; }
+    .no-journals { text-align: center; color: @Theme.SecondaryTextColor; padding: 40px; }
 
     /* Pagination */
     .pagination {
@@ -208,29 +441,117 @@
     }
 
     .pagination button {
-        padding: 6px 14px;
+        padding: 8px 16px;
         border-radius: 8px;
         border: 1px solid #ccc;
-        background: white;
+        background: @Theme.CardBackground;
+        color: @Theme.TextColor;
         cursor: pointer;
+        font-weight: 600;
     }
 
     .pagination button:disabled { opacity: 0.5; cursor: default; }
+    .pagination button:not(:disabled):hover { background: @Theme.ButtonBackground; color: @Theme.ButtonText; }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .journal-page {
+            padding: 20px;
+        }
+
+        .journal-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .filters-row {
+            flex-direction: column;
+        }
+
+        .filter-group {
+            width: 100%;
+        }
+    }
 </style>
 
 @code {
     private List<JournalEntry> allEntries = new();
     private List<JournalEntry> filteredEntries = new();
     private List<string> categories = new();
+    private List<string> allMoods = new();
+    private List<string> allTags = new();
 
+    // Filter properties
     private string searchText = "";
-    private string selectedFilter = "";
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private string selectedCategory = "";
+    private string selectedMood = "";
+    private string selectedTag = "";
 
-    private string SearchText { get => searchText; set { searchText = value; ApplyFilter(); } }
-    private string SelectedFilter { get => selectedFilter; set { selectedFilter = value; ApplyFilter(); } }
+    private string SearchText
+    {
+        get => searchText;
+        set
+        {
+            searchText = value;
+            ApplyFilter();
+        }
+    }
+
+    private DateTime? StartDate
+    {
+        get => startDate;
+        set
+        {
+            startDate = value;
+            ApplyFilter();
+        }
+    }
+
+    private DateTime? EndDate
+    {
+        get => endDate;
+        set
+        {
+            endDate = value;
+            ApplyFilter();
+        }
+    }
+
+    private string SelectedCategory
+    {
+        get => selectedCategory;
+        set
+        {
+            selectedCategory = value;
+            ApplyFilter();
+        }
+    }
+
+    private string SelectedMood
+    {
+        get => selectedMood;
+        set
+        {
+            selectedMood = value;
+            ApplyFilter();
+        }
+    }
+
+    private string SelectedTag
+    {
+        get => selectedTag;
+        set
+        {
+            selectedTag = value;
+            ApplyFilter();
+        }
+    }
 
     private int _currentPage = 1;
-    private int PageSize = 3;
+    private int PageSize = 5;
     private int TotalPages => (int)Math.Ceiling((filteredEntries?.Count ?? 0) / (double)PageSize);
     private List<JournalEntry> PagedEntries => filteredEntries?
         .Skip((_currentPage - 1) * PageSize)
@@ -248,24 +569,160 @@
         var currentUserEmail = Auth.CurrentUser.Email;
         allEntries = await Db.GetEntriesAsync(currentUserEmail);
 
+        // Build filter options
+        BuildFilterOptions();
+
+        ApplyFilter();
+    }
+
+    private void BuildFilterOptions()
+    {
+        // Categories
         categories = allEntries
             .Select(e => e.Category)
             .Where(c => !string.IsNullOrEmpty(c))
             .Distinct()
+            .OrderBy(c => c)
             .ToList();
 
-        ApplyFilter();
+        // Moods (Primary + Secondary)
+        var moods = new HashSet<string>();
+        foreach (var entry in allEntries)
+        {
+            if (!string.IsNullOrWhiteSpace(entry.PrimaryMood))
+                moods.Add(entry.PrimaryMood);
+
+            if (!string.IsNullOrWhiteSpace(entry.SecondaryMoods))
+            {
+                foreach (var secondaryMood in entry.SecondaryMoods.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    moods.Add(secondaryMood.Trim());
+                }
+            }
+        }
+        allMoods = moods.OrderBy(m => m).ToList();
+
+        // Tags
+        var tags = new HashSet<string>();
+        foreach (var entry in allEntries)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Tags)) continue;
+            foreach (var tag in entry.Tags.Split(','))
+            {
+                var clean = tag.Trim();
+                if (!string.IsNullOrWhiteSpace(clean))
+                    tags.Add(clean);
+            }
+        }
+        allTags = tags.OrderBy(t => t).ToList();
     }
 
     private void ApplyFilter()
     {
         filteredEntries = allEntries?
             .Where(e =>
-                (string.IsNullOrEmpty(searchText) || (e.Content?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false)) &&
-                (string.IsNullOrEmpty(selectedFilter) || e.Category == selectedFilter))
+            {
+                // Search text filter (title/content)
+                if (!string.IsNullOrEmpty(searchText))
+                {
+                    bool matchesSearch = (e.Category?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                        (e.Content?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false);
+                    if (!matchesSearch)
+                        return false;
+                }
+
+                // Date range filter
+                if (startDate.HasValue && e.CreatedAt.Date < startDate.Value.Date)
+                    return false;
+
+                if (endDate.HasValue && e.CreatedAt.Date > endDate.Value.Date)
+                    return false;
+
+                // Category filter
+                if (!string.IsNullOrEmpty(selectedCategory) && e.Category != selectedCategory)
+                    return false;
+
+                // Mood filter (check primary and secondary moods)
+                if (!string.IsNullOrEmpty(selectedMood))
+                {
+                    bool primaryMatch = e.PrimaryMood == selectedMood;
+                    bool secondaryMatch = false;
+
+                    if (!string.IsNullOrWhiteSpace(e.SecondaryMoods))
+                    {
+                        var secondaryMoodsList = e.SecondaryMoods.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(m => m.Trim());
+                        secondaryMatch = secondaryMoodsList.Contains(selectedMood);
+                    }
+
+                    if (!primaryMatch && !secondaryMatch)
+                        return false;
+                }
+
+                // Tag filter
+                if (!string.IsNullOrEmpty(selectedTag))
+                {
+                    if (string.IsNullOrWhiteSpace(e.Tags))
+                        return false;
+
+                    var entryTags = e.Tags.Split(',').Select(t => t.Trim());
+                    if (!entryTags.Contains(selectedTag))
+                        return false;
+                }
+
+                return true;
+            })
+            .OrderByDescending(e => e.CreatedAt)
             .ToList() ?? new List<JournalEntry>();
 
         _currentPage = 1;
+    }
+
+    private void ResetFilters()
+    {
+        searchText = "";
+        startDate = null;
+        endDate = null;
+        selectedCategory = "";
+        selectedMood = "";
+        selectedTag = "";
+        ApplyFilter();
+    }
+
+    private void ClearFilter(string filterName)
+    {
+        switch (filterName)
+        {
+            case nameof(SearchText):
+                searchText = "";
+                break;
+            case nameof(StartDate):
+                startDate = null;
+                break;
+            case nameof(EndDate):
+                endDate = null;
+                break;
+            case nameof(SelectedCategory):
+                selectedCategory = "";
+                break;
+            case nameof(SelectedMood):
+                selectedMood = "";
+                break;
+            case nameof(SelectedTag):
+                selectedTag = "";
+                break;
+        }
+        ApplyFilter();
+    }
+
+    private bool HasActiveFilters()
+    {
+        return !string.IsNullOrEmpty(searchText) ||
+               startDate.HasValue ||
+               endDate.HasValue ||
+               !string.IsNullOrEmpty(selectedCategory) ||
+               !string.IsNullOrEmpty(selectedMood) ||
+               !string.IsNullOrEmpty(selectedTag);
     }
 
     private void PrevPage() { if (_currentPage > 1) _currentPage--; }
@@ -288,8 +745,12 @@
         try
         {
             var pdfService = new PdfExportService();
+            
+            // Export FILTERED entries (not all entries)
             var path = pdfService.ExportJournalsToPdf(Auth.CurrentUser.Email, filteredEntries);
-            await JSRuntime.InvokeVoidAsync("alert", $"PDF exported to: {path}");
+            
+            var filterInfo = HasActiveFilters() ? " (filtered)" : "";
+            await JSRuntime.InvokeVoidAsync("alert", $"PDF exported successfully{filterInfo}!\n\nExported {filteredEntries.Count} entries to:\n{path}");
         }
         catch (Exception ex)
         {
